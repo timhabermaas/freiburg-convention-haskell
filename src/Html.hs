@@ -34,7 +34,7 @@ layout inner = do
         H.head $ do
             H.meta ! A.charset "utf-8"
             H.meta ! A.name "viewport" ! A.content "width=device-width, initial-scale=1, shrink-to-fit=no"
-            H.title "Herxheim Convention 2018"
+            H.title "Freiburger Convention 2019"
             H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href "https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css"
             H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href "https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
         H.body $ do
@@ -238,11 +238,11 @@ registerPage view isOverLimit = layout $ do
                 " mit deinem Namen und bitte um Abmeldung."
             H.h3 "Was passiert mit meinen Daten?"
             H.p $ do
-                "Die Daten dienen ausschließlich der Anmeldung bei der Herxheim-Convention "
+                "Die Daten dienen ausschließlich der Anmeldung bei der Freiburg-Convention "
                 "und werden nur zu diesem Zweck gespeichert. Du kannst uns jederzeit unter "
                 mailLink registrationEmail registrationEmail
                 " kontaktieren um deine Daten und somit deine Anmeldung löschen zu lassen. "
-                "Alle Daten werden noch bis 30 Tage nach der Convention (11.11.2018) gespeichert "
+                "Alle Daten werden noch bis 30 Tage nach der Convention (11.11.2019) gespeichert "
                 "und dann gelöscht."
 
 

@@ -11,10 +11,10 @@ build:
 	stack build
 
 run-watch:
-	stack exec ghcid -- -c "stack ghci --main-is herxheim2018:exe:herxheim2018-exe" -T="main"
+	env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg2019' stack exec ghcid -- -c "stack ghci --main-is freiburg2019:exe:freiburg2019-exe" -T="main"
 
 test:
-	stack test --fast
+	env DATABASE_URL='postgres://localhost/freiburg2019_test' stack test --fast
 
 test-watch:
-	env DATABASE_URL='postgres://localhost/herxheim2018_test' stack exec ghcid -- -c "stack ghci test/Spec.hs" -T="main"
+	env DATABASE_URL='postgres://localhost/freiburg2019_test' stack exec ghcid -- -c "stack ghci test/Spec.hs" -T="main"

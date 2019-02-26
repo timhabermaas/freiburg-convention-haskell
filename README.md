@@ -1,6 +1,6 @@
-# Herxheim2018
+# Freiburg2019
 
-[![Build Status](https://travis-ci.org/timhabermaas/herxheim2018.svg?branch=master)](https://travis-ci.org/timhabermaas/herxheim2018)
+[![Build Status](https://travis-ci.org/timhabermaas/freiburg2019.svg?branch=master)](https://travis-ci.org/timhabermaas/freiburg2019)
 
 ## Installation
 
@@ -12,8 +12,8 @@ $ stack build
 ## Run the server
 
 ```sh
-$ createdb herxheim2018
-$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/herxheim2018' stack exec herxheim2018-exe
+$ createdb freiburg2019
+$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg2019' stack exec freiburg2019-exe
 ```
 
 ### Environment variables
@@ -29,8 +29,8 @@ The following environment variables need to be set:
 ## Run the tests
 
 ```sh
-$ createdb herxheim2018_test
-$ env DATABASE_URL='postgres://localhost/herxheim2018_test' stack test
+$ createdb freiburg2019_test
+$ env DATABASE_URL='postgres://localhost/freiburg2019_test' stack test
 ```
 
 ## Deployment
@@ -38,6 +38,6 @@ $ env DATABASE_URL='postgres://localhost/herxheim2018_test' stack test
 The application is currently deployed to Heroku. For deployment run:
 
 ```sh
-$ git remote add heroku https://git.heroku.com/herxheim2018.git
+$ git remote add heroku https://git.heroku.com/freiburg2019.git
 $ git push heroku master
 ```
