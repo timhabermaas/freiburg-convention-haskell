@@ -40,6 +40,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 # extra-deps: []
 extra-deps:
+  - sendgrid-v3-0.1.2.0
   - digestive-functors-0.8.4.0
   - digestive-functors-blaze-0.6.2.0
 

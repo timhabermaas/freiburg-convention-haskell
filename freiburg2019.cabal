@@ -16,12 +16,19 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
-                     , Db
+                     , IO.Mailer
+                     , IO.Mailer.InMemoryMailer
+                     , IO.Mailer.Internal
+                     , IO.Mailer.SendGridMailer
+                     , IO.Db
                      , Html
                      , RegistrationsTable
                      , Form
                      , Types
                      , Util
+  other-modules:       Domain.Participant
+                     , Domain.Registration
+                     , Domain.SharedTypes
   ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , blaze-html
@@ -35,6 +42,8 @@ library
                      , pandoc
                      , mtl
                      , postgresql-simple
+                     , resource-pool
+                     , sendgrid-v3
                      , servant-blaze
                      , servant-server
                      , text

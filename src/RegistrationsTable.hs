@@ -8,7 +8,7 @@ module RegistrationsTable
 import Text.Pandoc
 import qualified Text.Blaze.Html5 as H
 import qualified Data.Text as T
-import qualified Db as Db
+import qualified IO.Db as Db
 import Types
 import Data.Monoid ((<>))
 import Data.Time.Format (formatTime, defaultTimeLocale)

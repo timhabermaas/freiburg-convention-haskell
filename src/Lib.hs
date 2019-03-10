@@ -29,10 +29,12 @@ import qualified Text.Digestive.View as DF
 import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 
-import qualified Db as Db
+import qualified IO.Db as Db
 import qualified Html as Page
 import qualified Form as Form
 import qualified Data.Maybe as M
+import qualified IO.Mailer as Mailer
+import qualified Domain.SharedTypes as Domain
 import Types
 import Util
 
@@ -56,17 +58,20 @@ type API
 newtype AdminPassword = AdminPassword T.Text
 
 data Config = Config
-    { configDbConnection :: Db.Connection
+    { configMailerHandle :: Mailer.Handle
+    , configDbHandle :: Db.Handle
     , configAdminPassword :: AdminPassword
     , configSleepingLimits :: (GymSleepingLimit, CampingSleepingLimit)
     }
 
-startApp :: String -> Int -> Int -> Int -> AdminPassword -> IO ()
-startApp dbUrl port participationLimit campingLimit pw = do
-    conn <- Db.connect dbUrl
-    Db.migrate conn
-    let config = Config { configDbConnection = conn, configAdminPassword = pw, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
-    run port $ logStdoutDev $ app config
+startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe String -> IO ()
+startApp dbUrl port participationLimit campingLimit pw maybeSendGridApiKey = do
+    let mailerConfig = maybe Mailer.InMemoryConfig Mailer.SendGridConfig maybeSendGridApiKey
+    Mailer.withConfig mailerConfig $ \mailHandle -> do
+        Db.withConfig dbUrl $ \db -> do
+            Db.migrate db
+            let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
+            run port $ logStdoutDev $ app config
 
 authCheck :: AdminPassword -> BasicAuthCheck ()
 authCheck (AdminPassword pw) =
@@ -82,24 +87,27 @@ authServerContext pw = (authCheck pw) :. EmptyContext
 
 app :: Config -> Application
 app Config{..} =
-    serveWithContext api (authServerContext configAdminPassword) (server configDbConnection configSleepingLimits)
+    serveWithContext
+        api
+        (authServerContext configAdminPassword)
+        (server configDbHandle configMailerHandle configSleepingLimits)
 
 api :: Proxy API
 api = Proxy
 
-server :: Db.Connection -> (GymSleepingLimit, CampingSleepingLimit) -> Server API
-server conn limits =
-         registerHandler conn limits
-    :<|> postRegisterHandler conn limits
+server :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Server API
+server db mailerHandle limits =
+         registerHandler db limits
+    :<|> postRegisterHandler db mailerHandle limits
     :<|> successHandler
-    :<|> registrationsHandler conn limits
-    :<|> registrationsCsvHandler conn
-    :<|> deleteRegistrationsHandler conn
-    :<|> printRegistrationsHandler conn
+    :<|> registrationsHandler db limits
+    :<|> registrationsCsvHandler db
+    :<|> deleteRegistrationsHandler db
+    :<|> printRegistrationsHandler db
 
-isOverLimit :: Db.Connection -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
-isOverLimit conn (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
-    sleepovers <- liftIO $ fmap Db.dbParticipantSleepovers <$> Db.allRegistrations conn
+isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
+isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
+    sleepovers <- liftIO $ fmap Db.dbParticipantSleepovers <$> Db.allRegistrations handle
     let gymLimitReached =
             if gymSleepCount sleepovers >= gymLimit then
                 GymSleepingLimitReached
@@ -112,13 +120,13 @@ isOverLimit conn (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) 
                 EnoughTentSpots
     pure (gymLimitReached, campingLimitReached)
 
-registerHandler :: Db.Connection -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
+registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
     view <- DF.getForm "Registration" $ Form.registerForm overLimit
     pure $ Page.registerPage view overLimit
 
-registrationsHandler :: Db.Connection -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
+registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
 registrationsHandler conn limits _ = do
     registrations <- liftIO $ Db.allRegistrations conn
     pure $ Page.registrationListPage registrations limits
@@ -152,14 +160,14 @@ instance Csv.ToNamedRecord CsvParticipant where
             GymSleeping -> "Klassenzimmer"
             CouldntSelect -> "Keine Auswahl"
 
-registrationsCsvHandler :: Db.Connection -> () -> Handler BSL.ByteString
+registrationsCsvHandler :: Db.Handle -> () -> Handler BSL.ByteString
 registrationsCsvHandler conn _ = do
     registrations <- liftIO $ Db.allRegistrations conn
     let headers = fixEncoding <$> V.fromList [ "Name", "Adresse", "Land", "Übernachtung", "Anmerkung" ]
     pure $ Csv.encodeByName headers $ fmap CsvParticipant registrations
 
-postRegisterHandler :: Db.Connection -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
-postRegisterHandler conn limits body = do
+postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
+postRegisterHandler conn mailerHandle limits body = do
     overLimit <- liftIO $ isOverLimit conn limits
     r <- DF.postForm "Registration" (Form.registerForm overLimit) $ servantPathEnv body
     case r of
@@ -170,15 +178,19 @@ postRegisterHandler conn limits body = do
             case botStatus of
                 Form.IsBot -> redirectTo "/success"
                 Form.IsHuman -> do
+                    let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
+                    let email = Mailer.Mail "hallo! :)" "some subject" to
+                    liftIO $ Mailer.sendMail mailerHandle email
+                    liftIO $ putStrLn $ show email
                     liftIO $ Db.saveRegistration conn registration
                     redirectTo "/success"
 
-deleteRegistrationsHandler :: Db.Connection -> () -> ParticipantId -> Handler Page.Html
+deleteRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
 deleteRegistrationsHandler conn _ (ParticipantId participantId) = do
     liftIO $ Db.deleteRegistration conn (Db.DbId participantId)
     redirectTo "/admin"
 
-printRegistrationsHandler :: Db.Connection -> () -> Handler Page.Html
+printRegistrationsHandler :: Db.Handle -> () -> Handler Page.Html
 printRegistrationsHandler conn _ = do
     regs <- liftIO $ Db.allRegistrationsOrderedByName conn
     pure $ Page.registrationPrintPage regs

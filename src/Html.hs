@@ -21,7 +21,7 @@ import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.Time.LocalTime (utcToZonedTime, hoursToTimeZone, ZonedTime)
 import Data.Maybe (catMaybes)
 
-import qualified Db as Db
+import qualified IO.Db as Db
 import Types
 import Util
 
@@ -170,7 +170,7 @@ registerPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimit
 registerPage view isOverLimit = layout $ do
     row $ do
         col 12 $ do
-            H.h1 ! A.class_ "mb-4" $ "Anmeldung zum P(f)älzer Jongliertreffe(n) 2018"
+            H.h1 ! A.class_ "mb-4" $ "Anmeldung zur Freiburger Jonglierconvention 2019"
     row $ do
         col 6 $ do
             noSleepingMessage isOverLimit
@@ -194,23 +194,6 @@ registerPage view isOverLimit = layout $ do
                     row $ do
                         col 12 $ do
                             formErrorMessage "birthday" view
-                H.div ! A.class_ "form-group" $ do
-                    label "Straße" "street" view
-                    DH.inputText "street" view ! A.class_ "form-control"
-                    formErrorMessage "street" view
-                H.div ! A.class_ "row" $ do
-                    H.div ! A.class_ "col-4 form-group" $ do
-                        label "PLZ" "postalCode" view
-                        DH.inputText "postalCode" view ! A.class_ "form-control"
-                        formErrorMessage "postalCode" view
-                    H.div ! A.class_ "col-8 form-group" $ do
-                        label "Stadt" "city" view
-                        DH.inputText "city" view ! A.class_ "form-control"
-                        formErrorMessage "city" view
-                H.div ! A.class_ "form-group" $ do
-                    label "Land" "country" view
-                    DH.inputSelect "country" (modifiedView view) ! A.class_ "form-control"
-                    formErrorMessage "country" view
                 renderUnless (isOverLimit == (GymSleepingLimitReached, CampingSleepingLimitReached)) $ do
                     H.div ! A.class_ "form-group" $ do
                         H.h4 "Übernachtung"
