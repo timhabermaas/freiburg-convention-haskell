@@ -1,5 +1,11 @@
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Domain.Registration
-  ( Registration(..)
+  ( Registration'(..)
+  , NewRegistration
+  , ExistingRegistration
   ) where
 
 import Domain.SharedTypes
@@ -7,9 +13,13 @@ import qualified Domain.Participant as P
 
 import qualified Data.Text as T
 
-data Registration
+data Registration' persistedStatus
   = Registration
-  { id :: Id
+  { id :: () --Id
   , email :: T.Text
-  , participants :: [P.Participant]
+  , participants :: [P.Participant' persistedStatus]
   }
+
+type NewRegistration = Registration' 'New
+type ExistingRegistration = Registration' 'Persisted
+deriving instance Show NewRegistration

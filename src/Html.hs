@@ -166,6 +166,38 @@ noSleepingMessage (EnoughGymSleepingSpots, CampingSleepingLimitReached) = mempty
 noSleepingMessage (GymSleepingLimitReached, CampingSleepingLimitReached) = alert "Leider sind schon alle Schlafplätze belegt. Du kannst dich aber trotzdem anmelden und vorbei kommen, solange du dir einen eigenen Schlafplatz organisierst."
 noSleepingMessage (GymSleepingLimitReached, EnoughTentSpots) = alert "Leider sind schon alle Schlafplätze in den Klassenzimmern belegt. Du kannst dich aber trotzdem anmelden und entweder im Zelt schlafen oder dir einen eigenen Schlafplatz organisieren."
 
+participantForm :: DV.View T.Text -> Int -> H.Html
+participantForm view currentIndex = do
+    H.br
+    H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
+    H.div ! A.class_ "form-group" $ do
+        label "Name" "name" view
+        DH.inputText "name" view ! A.class_ "form-control"
+        formErrorMessage "name" view
+    H.div ! A.class_ "form-group" $ do
+        label "Geburtsdatum" "birthday" view
+        row $ do
+            H.div ! A.class_ "col-sm-3" $ do
+                DH.inputSelect "birthday.day" (modifiedView view) ! A.class_ "form-control"
+            H.div ! A.class_ "col-sm-5 mt-2 mt-sm-0" $ do
+                DH.inputSelect "birthday.month" (modifiedView view) ! A.class_ "form-control"
+            H.div ! A.class_ "col-sm-4 mt-2 mt-sm-0" $ do
+                DH.inputSelect "birthday.year" (modifiedView view) ! A.class_ "form-control"
+        row $ do
+            col 12 $ do
+                formErrorMessage "birthday" view
+    row $ do
+        col 6 $ do
+            H.div ! A.class_ "form-group" $ do
+                label "Festivalticket" "ticket" view
+                DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
+                formErrorMessage "ticket" view
+        col 6 $ do
+            H.div ! A.class_ "form-group" $ do
+                label "Festivalticket" "ticket" view
+                DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
+                formErrorMessage "ticket" view
+
 registerPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
 registerPage view isOverLimit = layout $ do
     row $ do
@@ -175,39 +207,27 @@ registerPage view isOverLimit = layout $ do
         col 6 $ do
             noSleepingMessage isOverLimit
             H.form ! A.action "/register" ! A.method "post" $ do
+                H.div ! A.class_ "form-group" $ do
+                    label' "email" view "E-Mail"
+                    DH.inputText "email" view ! A.class_ "form-control"
+                    formErrorMessage "email" view
                 H.div ! A.class_ "form-group d-none" $ do
                     label "Name" "botField" view
                     DH.inputText "botField" view ! A.class_ "form-control"
-                H.div ! A.class_ "form-group" $ do
-                    label "Name" "name" view
-                    DH.inputText "name" view ! A.class_ "form-control"
-                    formErrorMessage "name" view
-                H.div ! A.class_ "form-group" $ do
-                    label "Geburtsdatum" "birthday" view
-                    row $ do
-                        H.div ! A.class_ "col-sm-3" $ do
-                            DH.inputSelect "birthday.day" (modifiedView view) ! A.class_ "form-control"
-                        H.div ! A.class_ "col-sm-5 mt-2 mt-sm-0" $ do
-                            DH.inputSelect "birthday.month" (modifiedView view) ! A.class_ "form-control"
-                        H.div ! A.class_ "col-sm-4 mt-2 mt-sm-0" $ do
-                            DH.inputSelect "birthday.year" (modifiedView view) ! A.class_ "form-control"
-                    row $ do
-                        col 12 $ do
-                            formErrorMessage "birthday" view
+                --pure ()
+                --mapM_ (participantForm view) [0..4]
+                formErrorMessage "participants" view
+                mapM_ (\(v, i) -> participantForm v i) $ DV.listSubViews "participants" view `zip` [1..]
+                {-
                 renderUnless (isOverLimit == (GymSleepingLimitReached, CampingSleepingLimitReached)) $ do
                     H.div ! A.class_ "form-group" $ do
                         H.h4 "Übernachtung"
                         bootstrapRadios "sleepover" (modifiedView view)
                 H.div ! A.class_ "form-group" $ do
-                    label' "email" view $ do
-                        "E-Mail "
-                        H.small ! A.class_ "text-muted" $ "(optional)"
-                    DH.inputText "email" view ! A.class_ "form-control"
-                    formErrorMessage "email" view
-                H.div ! A.class_ "form-group" $ do
                     label "Willst du uns noch etwas mitteilen?" "comment" view
                     DH.inputTextArea Nothing Nothing "comment" (modifiedView view) ! A.class_ "form-control"
                     formErrorMessage "comment" view
+                -}
                 H.div ! A.class_ "form-group" $ do
                     H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Anmelden"
         col 6 $ do

@@ -4,7 +4,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 
-
 module Lib
     ( startApp
     , app
@@ -31,10 +30,9 @@ import qualified Data.Vector as V
 
 import qualified IO.Db as Db
 import qualified Html as Page
-import qualified Form as Form
+import qualified Form
 import qualified Data.Maybe as M
 import qualified IO.Mailer as Mailer
-import qualified Domain.SharedTypes as Domain
 import Types
 import Util
 
@@ -123,7 +121,9 @@ isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit
 registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
-    view <- DF.getForm "Registration" $ Form.registerForm overLimit
+    view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
+    liftIO $ putStrLn $ show $ DF.debugViewPaths view
+    --view <- DF.getForm "Registration" $ Form.registerForm overLimit
     pure $ Page.registerPage view overLimit
 
 registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
@@ -169,7 +169,26 @@ registrationsCsvHandler conn _ = do
 postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
 postRegisterHandler conn mailerHandle limits body = do
     overLimit <- liftIO $ isOverLimit conn limits
-    r <- DF.postForm "Registration" (Form.registerForm overLimit) $ servantPathEnv body
+    r <- DF.postForm "Registration" (Form.newRegisterForm overLimit) $ servantPathEnv body
+    case r of
+        (view, Nothing) -> do
+            liftIO $ print view
+            pure $ Page.registerPage view overLimit
+        (_, Just botCheckedRegistration) -> do
+            case botCheckedRegistration of
+                Form.IsBot -> redirectTo "/success"
+                Form.IsHuman registration -> do
+                    --liftIO $ Db.saveRegistration conn registration
+                    {-
+                    let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
+                    let email = Mailer.Mail "hallo! :)" "some subject" to
+                    liftIO $ Mailer.sendMail mailerHandle email
+                    liftIO $ putStrLn $ show email
+                    liftIO $ Db.saveRegistration conn registration
+                    -}
+                    redirectTo "/success"
+    --r <- DF.postForm "Registration" (Form.registerForm overLimit) $ servantPathEnv body
+    {-
     case r of
         (view, Nothing) -> do
             liftIO $ print view
@@ -184,6 +203,7 @@ postRegisterHandler conn mailerHandle limits body = do
                     liftIO $ putStrLn $ show email
                     liftIO $ Db.saveRegistration conn registration
                     redirectTo "/success"
+        -}
 
 deleteRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
 deleteRegistrationsHandler conn _ (ParticipantId participantId) = do

@@ -16,6 +16,9 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
+                     , Domain.Participant
+                     , Domain.Registration
+                     , Domain.SharedTypes
                      , IO.Mailer
                      , IO.Mailer.InMemoryMailer
                      , IO.Mailer.Internal
@@ -26,9 +29,6 @@ library
                      , Form
                      , Types
                      , Util
-  other-modules:       Domain.Participant
-                     , Domain.Registration
-                     , Domain.SharedTypes
   ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , blaze-html

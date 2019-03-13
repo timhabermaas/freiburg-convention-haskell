@@ -1,19 +1,62 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Form
-    ( registerForm
+    ( newRegisterForm
     , Participant(..)
-    , BotStatus(..)
+    , BotCheckResult(..)
     ) where
 
 import Types
 import qualified Text.Digestive.Form as DF
 import qualified Text.Digestive.Types as DT
 import qualified Data.Text as T
-import Data.Time.Calendar (Day, fromGregorianValid)
+import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
+import qualified Domain.Registration as Domain
+import qualified Domain.Participant as Domain
+import qualified Domain.SharedTypes as SharedTypes
 
-data BotStatus = IsBot | IsHuman
+data BotCheckResult a = IsBot | IsHuman a deriving Show
 
+participantIsEmpty :: Domain.NewParticipant -> Bool
+participantIsEmpty = SharedTypes.nameEmpty . Domain.participantName
+
+checkForBot :: Monad m => DF.Form T.Text m a -> DF.Form T.Text m (BotCheckResult a)
+checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "botField" DF..: DF.text Nothing <*> innerForm
+
+newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
+newRegisterForm _ = checkForBot $
+    Domain.Registration <$> pure ()
+                        <*> "email" DF..: mustBePresent (DF.text Nothing)
+                        <*> "participants" DF..: mustContainAtLeastOne (fmap (filter (not . participantIsEmpty)) $ DF.listOf participantForm (Just $ replicate 5 defaultParticipant))
+  where
+    defaultParticipant :: Domain.NewParticipant
+    defaultParticipant =
+        Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket Domain.Gym
+
+participantForm :: Monad m => DF.Formlet T.Text m Domain.NewParticipant
+participantForm _def =
+    buildParticipant <$> "name" DF..: DF.text Nothing
+                     <*> "birthday" DF..: birthdayFields
+                     <*> "ticket" DF..: ticketForm
+  where
+    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.NewParticipant
+    buildParticipant name birthday ticket = Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket Domain.Gym
+
+ticketForm :: Monad m => DF.Form T.Text m Domain.Ticket
+ticketForm = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
+  where
+    ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
+    ticketChoicesWithLabel = zip Domain.ticketChoices $ ticketChoiceLabel <$> Domain.ticketChoices
+    ticketChoiceLabel t@(age, stay) = stayLabel stay <> ", " <> ageLabel age <> ": " <> priceLabel t
+    stayLabel Domain.ShortStay = "Fr – So inkl. Shows"
+    stayLabel Domain.LongStay = "Do – So inkl. Shows"
+    ageLabel Domain.Baby = "0-3 Jahre"
+    ageLabel Domain.Child = "4-12 Jahre"
+    ageLabel Domain.OlderThan12 = ">12 Jahre"
+    priceLabel = T.pack . show . Domain.ticketPrice
+
+-- TODO: This might benefit from using Selective Functors. We want to make a decision based on the BotStatus
+{-
 registerForm :: (Monad m) => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotStatus, Participant)
 registerForm isOverLimit =
     (,) <$> botField
@@ -45,6 +88,7 @@ registerForm isOverLimit =
         , (Camping, "Ich schlafe im Zelt auf dem Schulgelände.")
         , (NoNights, "Ich sorge für meine eigene Übernachtung.")
         ]
+-}
 
 birthdayFields :: Monad m => DF.Form T.Text m Day
 birthdayFields =
@@ -79,4 +123,7 @@ birthdayFields =
 mustBePresent :: (Monad m) => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 mustBePresent = DF.check "muss ausgefüllt werden" notEmpty
   where
-    notEmpty = not . T.null
+    notEmpty = not . T.null . T.strip
+
+mustContainAtLeastOne :: Monad m => DF.Form T.Text m [a] -> DF.Form T.Text m [a]
+mustContainAtLeastOne form = DF.check "Mindestens ein Teilnehmer muss angegeben werden." (not . null) form

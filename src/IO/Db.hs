@@ -50,7 +50,7 @@ instance FromField P.Hostel where
         else
             fail "Can't parse Hostel"
 
-instance FromRow P.Participant where
+instance FromRow P.ExistingParticipant where
     fromRow = do
         id_ <- DT.Id <$> field
         type_ <- field
@@ -60,10 +60,10 @@ instance FromRow P.Participant where
         case type_ :: T.Text of
             "frisbee" -> do
                 sleeping <- field
-                pure $ P.FrisbeeParticipant id_ pI sleeping
+                pure $ P.FrisbeeParticipant id_ pI undefined sleeping
             "juggler" -> do
                 sleeping <- field
-                pure $ P.JugglingParticipant id_ pI sleeping
+                pure $ P.JugglingParticipant id_ pI undefined sleeping
             _ -> fail "type_ must be either frisbee or juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types

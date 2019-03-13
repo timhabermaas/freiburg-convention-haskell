@@ -1,5 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
 
 module Domain.SharedTypes
   ( Id(..)
@@ -8,16 +11,19 @@ module Domain.SharedTypes
   , Birthday(..)
   , MailAddress(MailAddress)
   , mkMailAddress
+  , MaybePersisted()
+  , PersistedStatus(..)
+  , nameEmpty
   ) where
 
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Calendar (Day)
 
-newtype Id = Id Int
-newtype RegisteredAt = RegisteredAt UTCTime
-newtype Birthday = Birthday Day
-newtype Name = Name T.Text
+newtype Id = Id Int deriving Show
+newtype RegisteredAt = RegisteredAt UTCTime deriving Show
+newtype Birthday = Birthday Day deriving Show
+newtype Name = Name T.Text deriving Show
 
 newtype MailAddress = MkMailAddress T.Text deriving Show
 
@@ -31,3 +37,12 @@ mkMailAddress text =
         Nothing
     else
         Just $ MailAddress text
+
+data PersistedStatus = Persisted | New
+
+type family MaybePersisted (status :: PersistedStatus) a where
+    MaybePersisted 'Persisted a = a
+    MaybePersisted 'New a = ()
+
+nameEmpty :: Name -> Bool
+nameEmpty (Name t) = T.null $ T.strip t
