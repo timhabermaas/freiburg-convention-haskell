@@ -27,7 +27,7 @@ data PersonalInformation = PersonalInformation
   , birthday :: Birthday
   } deriving Show
 
-data ConventionSleeping = Gym | Camping | SelfOrganized deriving Show
+data ConventionSleeping = Gym | Camping | SelfOrganized deriving (Show, Eq)
 data Hostel = Hostel deriving Show
 
 participantName :: Participant' status -> Name
@@ -44,12 +44,12 @@ type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted
 
 instance Show NewParticipant where
-    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping
-    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping
+    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
+    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
 
 instance Show ExistingParticipant where
-    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping
-    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping
+    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
+    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
 
 
 data Stay = LongStay | ShortStay deriving (Show, Eq)
@@ -70,6 +70,7 @@ instance Show Price where
 ticketChoices :: [Ticket]
 ticketChoices = [(age, stay) | stay <- [LongStay, ShortStay], age <- [OlderThan12, Child, Baby]]
 
+-- TODO: Pass in frisbee vs juggler, is called from form where we don't have complete participant
 ticketPrice :: Ticket -> Price
 ticketPrice (Baby, _) = Price 0
 ticketPrice (Child, ShortStay) = Price 15

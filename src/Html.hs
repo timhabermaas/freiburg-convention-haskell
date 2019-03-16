@@ -19,7 +19,7 @@ import Data.Monoid ((<>))
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.Time.LocalTime (utcToZonedTime, hoursToTimeZone, ZonedTime)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 
 import qualified IO.Db as Db
 import Types
@@ -123,8 +123,8 @@ registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSle
             H.td ! A.class_ "text-center" $ gym dbParticipantSleepovers
             H.td ! A.class_ "text-center" $ tent dbParticipantSleepovers
             H.td $ H.toHtml $ formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr" $ utcToBerlin dbParticipantRegisteredAt
-            H.td $ H.toHtml $ maybe "" id dbParticipantComment
-            H.td $ H.toHtml $ maybe "" id dbParticipantEmail
+            H.td $ H.toHtml $ fromMaybe "" dbParticipantComment
+            H.td $ H.toHtml $ fromMaybe "" dbParticipantEmail
             H.td $ do
                 H.form ! A.action (H.toValue $ "/registrations/" <> idToText dbParticipantId <> "/delete")  ! A.method "post" $ do
                     H.input ! A.onclick (H.toValue $ "return confirm('Willst du wirklich ' + '" <> dbParticipantName <> "' + ' ausladen?');") ! A.class_ "btn btn-danger" ! A.type_ "submit" ! A.name "delete" ! A.value "Löschen"
@@ -168,35 +168,38 @@ noSleepingMessage (GymSleepingLimitReached, EnoughTentSpots) = alert "Leider sin
 
 participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
-    H.br
-    H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
-    H.div ! A.class_ "form-group" $ do
-        label "Name" "name" view
-        DH.inputText "name" view ! A.class_ "form-control"
-        formErrorMessage "name" view
-    H.div ! A.class_ "form-group" $ do
-        label "Geburtsdatum" "birthday" view
-        row $ do
-            H.div ! A.class_ "col-sm-3" $ do
-                DH.inputSelect "birthday.day" (modifiedView view) ! A.class_ "form-control"
-            H.div ! A.class_ "col-sm-5 mt-2 mt-sm-0" $ do
-                DH.inputSelect "birthday.month" (modifiedView view) ! A.class_ "form-control"
-            H.div ! A.class_ "col-sm-4 mt-2 mt-sm-0" $ do
-                DH.inputSelect "birthday.year" (modifiedView view) ! A.class_ "form-control"
-        row $ do
-            col 12 $ do
-                formErrorMessage "birthday" view
     row $ do
-        col 6 $ do
-            H.div ! A.class_ "form-group" $ do
-                label "Festivalticket" "ticket" view
-                DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
-                formErrorMessage "ticket" view
-        col 6 $ do
-            H.div ! A.class_ "form-group" $ do
-                label "Festivalticket" "ticket" view
-                DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
-                formErrorMessage "ticket" view
+        col 12 $ do
+            H.div ! A.class_ "participant" $ do
+                H.br
+                H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
+                H.div ! A.class_ "form-group" $ do
+                    label "Name" "name" view
+                    DH.inputText "name" view ! A.class_ "form-control"
+                    formErrorMessage "name" view
+                H.div ! A.class_ "form-group" $ do
+                    label "Geburtsdatum" "birthday" view
+                    row $ do
+                        H.div ! A.class_ "col-sm-3" $ do
+                            DH.inputSelect "birthday.day" (modifiedView view) ! A.class_ "form-control"
+                        H.div ! A.class_ "col-sm-5 mt-2 mt-sm-0" $ do
+                            DH.inputSelect "birthday.month" (modifiedView view) ! A.class_ "form-control"
+                        H.div ! A.class_ "col-sm-4 mt-2 mt-sm-0" $ do
+                            DH.inputSelect "birthday.year" (modifiedView view) ! A.class_ "form-control"
+                    row $ do
+                        col 12 $ do
+                            formErrorMessage "birthday" view
+                row $ do
+                    col 6 $ do
+                        H.div ! A.class_ "form-group" $ do
+                            label "Festivalticket" "ticket" view
+                            DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
+                            formErrorMessage "ticket" view
+                    col 6 $ do
+                        H.div ! A.class_ "form-group" $ do
+                            label "Unterkunft" "accomodation" view
+                            DH.inputSelect "accomodation" (modifiedView view) ! A.class_ "form-control"
+                            formErrorMessage "accomodation" view
 
 registerPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
 registerPage view isOverLimit = layout $ do
@@ -204,7 +207,7 @@ registerPage view isOverLimit = layout $ do
         col 12 $ do
             H.h1 ! A.class_ "mb-4" $ "Anmeldung zur Freiburger Jonglierconvention 2019"
     row $ do
-        col 6 $ do
+        col 12 $ do
             noSleepingMessage isOverLimit
             H.form ! A.action "/register" ! A.method "post" $ do
                 H.div ! A.class_ "form-group" $ do
@@ -214,10 +217,29 @@ registerPage view isOverLimit = layout $ do
                 H.div ! A.class_ "form-group d-none" $ do
                     label "Name" "botField" view
                     DH.inputText "botField" view ! A.class_ "form-control"
-                --pure ()
-                --mapM_ (participantForm view) [0..4]
+
                 formErrorMessage "participants" view
                 mapM_ (\(v, i) -> participantForm v i) $ DV.listSubViews "participants" view `zip` [1..]
+
+                H.div $ do
+                    H.a ! A.href "#" ! A.id "link" $ do
+                        "Weitere Teilnehmer anmelden"
+                H.br
+
+                H.script $ do
+                    "var elements = document.getElementsByClassName('participant');\
+                    \for (var i = 1; i < elements.length; i++) {\
+                      \elements[i].classList.add('d-none');\
+                    \}\
+                    \var link = document.getElementById('link');\
+                    \link.addEventListener('click', function(e){\
+                      \e.preventDefault();\
+                      \for (var i = 1; i < elements.length; i++) {\
+                        \elements[i].classList.remove('d-none');\
+                      \}\
+                      \link.classList.add('d-none');\
+                    \})\
+                    \"
                 {-
                 renderUnless (isOverLimit == (GymSleepingLimitReached, CampingSleepingLimitReached)) $ do
                     H.div ! A.class_ "form-group" $ do
@@ -230,23 +252,6 @@ registerPage view isOverLimit = layout $ do
                 -}
                 H.div ! A.class_ "form-group" $ do
                     H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Anmelden"
-        col 6 $ do
-            H.h2 "FAQs"
-            H.h3 "Warum muss ich mich dieses Jahr überhaupt anmelden?"
-            H.p "Wir haben dieses Jahr nur eine begrenzte Anzahl an Schlafplätzen zur Verfügung und mit einer Anmeldung sicherst du dir einen Schlafplatz."
-            H.h3 "Ich kann leider doch nicht kommen, was nun?"
-            H.p $ do
-                "Schade! Schreibe dann eine E-Mail an "
-                mailLink registrationEmail registrationEmail
-                " mit deinem Namen und bitte um Abmeldung."
-            H.h3 "Was passiert mit meinen Daten?"
-            H.p $ do
-                "Die Daten dienen ausschließlich der Anmeldung bei der Freiburg-Convention "
-                "und werden nur zu diesem Zweck gespeichert. Du kannst uns jederzeit unter "
-                mailLink registrationEmail registrationEmail
-                " kontaktieren um deine Daten und somit deine Anmeldung löschen zu lassen. "
-                "Alle Daten werden noch bis 30 Tage nach der Convention (11.11.2019) gespeichert "
-                "und dann gelöscht."
 
 
 formErrorMessage :: T.Text -> DV.View T.Text -> Html

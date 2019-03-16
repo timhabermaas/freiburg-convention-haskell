@@ -6,6 +6,7 @@
 module IO.Db
     ( migrate
     , saveRegistration
+    , saveRegistration'
     , deleteRegistration
     , allRegistrations
     , allRegistrationsOrderedByName
@@ -21,6 +22,7 @@ import Data.String (IsString(fromString))
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PSQL
 import Database.PostgreSQL.Simple.FromRow
+import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.FromField (FromField, fromField)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
@@ -31,6 +33,7 @@ import Data.Time.Calendar (Day)
 import Types
 
 import qualified Domain.Participant as P
+import qualified Domain.Registration as R
 import qualified Domain.SharedTypes as DT
 
 instance FromField P.ConventionSleeping where
@@ -120,6 +123,12 @@ withConfig url f = do
       (Pool.createPool (PSQL.connectPostgreSQL (BS.pack url)) (\c -> PSQL.close c) 1 30 5)
       (\pool -> Pool.destroyAllResources pool)
       (\pool -> f (Handle pool))
+
+
+saveRegistration' :: Handle -> R.NewRegistration -> IO ()
+saveRegistration' (Handle pool) p =
+    Pool.withResource pool $ \conn -> do
+        void $ PSQL.execute conn "" ()
 
 saveRegistration :: Handle -> Participant -> IO ()
 saveRegistration (Handle pool) Participant{..} =

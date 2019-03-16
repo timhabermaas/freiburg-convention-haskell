@@ -176,9 +176,12 @@ postRegisterHandler conn mailerHandle limits body = do
             pure $ Page.registerPage view overLimit
         (_, Just botCheckedRegistration) -> do
             case botCheckedRegistration of
-                Form.IsBot -> redirectTo "/success"
+                Form.IsBot -> do
+                    liftIO $ putStrLn "is bot"
+                    redirectTo "/success"
                 Form.IsHuman registration -> do
-                    --liftIO $ Db.saveRegistration conn registration
+                    liftIO $ putStrLn $ show registration
+                    liftIO $ Db.saveRegistration' conn registration
                     {-
                     let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
                     let email = Mailer.Mail "hallo! :)" "some subject" to

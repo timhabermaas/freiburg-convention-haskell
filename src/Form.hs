@@ -38,9 +38,20 @@ participantForm _def =
     buildParticipant <$> "name" DF..: DF.text Nothing
                      <*> "birthday" DF..: birthdayFields
                      <*> "ticket" DF..: ticketForm
+                     <*> "accomodation" DF..: sleepingForm
   where
-    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.NewParticipant
-    buildParticipant name birthday ticket = Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket Domain.Gym
+    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.ConventionSleeping -> Domain.NewParticipant
+    buildParticipant name birthday ticket sleeping = Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket sleeping
+
+sleepingForm :: Monad m => DF.Form T.Text m Domain.ConventionSleeping
+sleepingForm = DF.choice allChoices $ Just Domain.Gym
+  where
+    allChoices :: [(Domain.ConventionSleeping, T.Text)]
+    allChoices =
+        [ (Domain.Gym, "Ich schlafe in der Schlafhalle")
+        , (Domain.Camping, "Ich schlafe im Zelt neben der Halle")
+        , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung")
+        ]
 
 ticketForm :: Monad m => DF.Form T.Text m Domain.Ticket
 ticketForm = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
