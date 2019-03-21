@@ -37,7 +37,7 @@ newRegisterForm _ = checkForBot $
   where
     defaultParticipant :: Domain.NewParticipant
     defaultParticipant =
-        Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket Domain.Gym
+        Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket (Domain.JugglerDetail Domain.Gym)
 
 participantForm :: Monad m => DF.Formlet T.Text m Domain.NewParticipant
 participantForm _def =
@@ -47,7 +47,7 @@ participantForm _def =
                      <*> "accommodation" DF..: sleepingForm
   where
     buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.ConventionSleeping -> Domain.NewParticipant
-    buildParticipant name birthday ticket sleeping = Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket sleeping
+    buildParticipant name birthday ticket sleeping = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.JugglerDetail sleeping)
 
 sleepingForm :: Monad m => DF.Form T.Text m Domain.ConventionSleeping
 sleepingForm = DF.choice allChoices $ Just Domain.Gym
@@ -143,4 +143,9 @@ optionalText =
     (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
 
 mustContainAtLeastOne :: Monad m => DF.Form T.Text m [a] -> DF.Form T.Text m (NE.NonEmpty a)
-mustContainAtLeastOne form = NE.fromList <$> DF.check "Mindestens ein Teilnehmer muss angegeben werden." (not . null) form
+mustContainAtLeastOne = DF.validate nonEmptyOrList
+  where
+    nonEmptyOrList list =
+        if null list
+            then DT.Error "Mindestens ein Teilnehmer muss angegeben werden."
+            else DT.Success $ NE.fromList list

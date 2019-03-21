@@ -64,13 +64,14 @@ instance FromRow P.ExistingParticipant where
         let pI = P.PersonalInformation name birthday
         case type_ :: T.Text of
             "frisbee" -> do
+                let ticket = P.ticketFromId ticketId
                 sleeping <- field
                 -- TODO: Grab ticket from frisbee tickets
-                pure $ P.FrisbeeParticipant id_ pI undefined sleeping
+                pure $ P.Participant' id_ pI ticket (P.FrisbeeDetail sleeping)
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                pure $ P.JugglingParticipant id_ pI ticket sleeping
+                pure $ P.Participant' id_ pI ticket (P.JugglerDetail sleeping)
             _ -> fail "type_ must be either frisbee or juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types
@@ -149,7 +150,7 @@ saveRegistration' (Handle pool) R.Registration{..} =
             PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
             forM_ participants $ \p -> do
                 case p of
-                    P.JugglingParticipant () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) sleeping ->
+                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.JugglerDetail sleeping) ->
                         -- TODO: Use ToRow instance
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, accommodationToText sleeping, ticketId, "juggler" :: T.Text)
             pure $ DT.Id registrationId

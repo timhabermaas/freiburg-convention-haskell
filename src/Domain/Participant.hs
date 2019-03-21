@@ -17,11 +17,11 @@ module Domain.Participant
   , defaultTicket
   , Stay(..)
   , AgeCategory(..)
-  , Price
   , ticketChoices
   , ticketFromId
   , ageLabel
   , stayLabel
+  , ParticipantDetail(..)
   ) where
 
 import Domain.SharedTypes
@@ -37,37 +37,35 @@ data ConventionSleeping = Gym | Camping | SelfOrganized deriving (Show, Eq)
 data Hostel = Hostel deriving Show
 
 participantName :: Participant' status -> Name
-participantName p =
-    case p of
-        (FrisbeeParticipant _ pI _ _) -> name pI
-        (JugglingParticipant _ pI _ _) -> name pI
+participantName (Participant' _ pI _ _) = name pI
 
 participantTicket :: Participant' status -> Ticket
-participantTicket p =
-    case p of
-        (FrisbeeParticipant _ _ t _) -> t
-        (JugglingParticipant _ _ t _) -> t
+participantTicket (Participant' _ _ t _) = t
+
+data ParticipantDetail
+    = FrisbeeDetail (Either Hostel ConventionSleeping)
+    | JugglerDetail ConventionSleeping
+    deriving Show
 
 data Participant' status
-    = FrisbeeParticipant (MaybePersisted status Id) PersonalInformation Ticket (Either Hostel ConventionSleeping)
-    | JugglingParticipant (MaybePersisted status Id) PersonalInformation Ticket ConventionSleeping
+    = Participant' (MaybePersisted status Id) PersonalInformation Ticket ParticipantDetail
+    -- = FrisbeeParticipant (MaybePersisted status Id) PersonalInformation Ticket (Either Hostel ConventionSleeping)
+    -- | JugglingParticipant (MaybePersisted status Id) PersonalInformation Ticket ConventionSleeping
 
 type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted
 
 instance Show NewParticipant where
-    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
-    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
+    show (Participant' id_ pI ticket details) = show id_ ++ show pI ++ show details ++ show ticket
 
 instance Show ExistingParticipant where
-    show (FrisbeeParticipant id_ pI ticket sleeping) = "Frisbee " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
-    show (JugglingParticipant id_ pI ticket sleeping) = "Juggler " ++ show id_ ++ show pI ++ show sleeping ++ show ticket
+    show (Participant' id_ pI ticket details) = show id_ ++ show pI ++ show details ++ show ticket
 
 
 data Stay = LongStay | ShortStay deriving (Show, Eq)
 data AgeCategory = Baby | Child | OlderThan12 deriving (Show, Eq)
 
-data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Int } deriving Show
+data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Price } deriving Show
 
 ageLabel :: AgeCategory -> T.Text
 ageLabel Baby = "0–3 Jahre"
@@ -84,23 +82,17 @@ instance Eq Ticket where
 defaultTicket :: Ticket
 defaultTicket = head ticketChoices
 
-newtype Price = Price Int
-
-instance Show Price where
-    show (Price x)
-        | x == 0 = "Kostenlos"
-        | otherwise = show x ++ "€"
 
 -- Make sure to not remove any tickets once this is live.
 -- Also: Tag each ticket with either juggler or frisbee to not mix them up
 ticketChoices :: [Ticket]
 ticketChoices =
-    [ Ticket (Id 1) OlderThan12 LongStay 39
-    , Ticket (Id 2) Child LongStay 20
-    , Ticket (Id 3) Baby LongStay 0
-    , Ticket (Id 4) OlderThan12 ShortStay 30
-    , Ticket (Id 5) Child ShortStay 15
-    , Ticket (Id 6) Baby ShortStay 0
+    [ Ticket (Id 1) OlderThan12 LongStay (Price 39)
+    , Ticket (Id 2) Child LongStay (Price 20)
+    , Ticket (Id 3) Baby LongStay (Price 0)
+    , Ticket (Id 4) OlderThan12 ShortStay (Price 30)
+    , Ticket (Id 5) Child ShortStay (Price 15)
+    , Ticket (Id 6) Baby ShortStay (Price 0)
     ]
 
 ticketFromId :: Id -> Ticket

@@ -15,6 +15,7 @@ module Domain.SharedTypes
   , PersistedStatus(..)
   , nameEmpty
   , PaymentCode(..)
+  , Price(..)
   ) where
 
 import qualified Data.Text as T
@@ -49,3 +50,7 @@ nameEmpty :: Name -> Bool
 nameEmpty (Name t) = T.null $ T.strip t
 
 newtype PaymentCode = PaymentCode T.Text deriving (Eq, Show)
+newtype Price = Price Int deriving (Eq, Num)
+
+instance Show Price where
+    show (Price x) = show x <> "€"

@@ -248,25 +248,29 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
     (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
     subject = "Bestellbestätigung Freiburger Jonglierfestival"
-    newLine = "\r\n"
+    newLine = "\n\n"
+    totalPrice = T.pack $ show $ D.priceToPay registration
+    (DT.PaymentCode paymentReason) = D.paymentCode registration
     nameAndTicketLine p =
         let
             (P.Ticket _ age stay price) = P.participantTicket p
             (DT.Name name) = P.participantName p
         in
-            "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price) <> "€"
+            "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
     mailBody = T.intercalate newLine
         [ "Liebe/r " <> firstParticipantName
         , "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+        , ""
         , T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
         , ""
         , ""
-        , "bitte überweise das Geld dafür bis zum 05.05.2018 auf unser Konto:"
+        , "bitte überweise das Geld dafür bis zum 05.05.2019 auf unser Konto:"
         , "Empfänger: Jonglieren in Freiburg e.V."
         , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
         , "IBAN: DE26 6805 0101 0012 0917 91"
         , "BIC: FRSPDE66XXX"
-        , "Verwendungszweck: TBD"
+        , "Betrag: " <> totalPrice
+        , "Verwendungszweck: " <> paymentReason
         , ""
         , "Wir freuen uns Dich auf dem Festival zu sehen."
         , "Viele Grüße Dein"

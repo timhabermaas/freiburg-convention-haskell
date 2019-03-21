@@ -6,10 +6,12 @@ module Domain.Registration
   ( Registration'(..)
   , NewRegistration
   , ExistingRegistration
+  , priceToPay
   ) where
 
 import Domain.SharedTypes
 import qualified Domain.Participant as P
+import Data.Foldable (foldl')
 
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
@@ -28,3 +30,6 @@ data Registration' persistedStatus
 type NewRegistration = Registration' 'New
 type ExistingRegistration = Registration' 'Persisted
 deriving instance Show NewRegistration
+
+priceToPay :: Registration' p -> Price
+priceToPay (Registration _ _ ps _ _ _) = foldl' (+) 0 $ (P.price . P.participantTicket) <$> ps
