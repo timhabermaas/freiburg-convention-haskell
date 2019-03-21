@@ -19,6 +19,7 @@ import Control.Monad.IO.Class (liftIO)
 import Network.HTTP.Media ((//), (/:))
 import Data.Semigroup ((<>))
 import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -244,10 +245,10 @@ servantPathEnv body _ = pure env
 mailForRegistration :: D.ExistingRegistration -> Mailer.Mail
 mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, firstParticipantName)
   where
-    (DT.Name firstParticipantName) = P.participantName $ head $ D.participants registration
+    (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
     subject = "Bestellbestätigung Freiburger Jonglierfestival"
-    newLine = "<br>"
+    newLine = "\r\n"
     nameAndTicketLine p =
         let
             (P.Ticket _ age stay price) = P.participantTicket p
@@ -257,7 +258,7 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
     mailBody = T.intercalate newLine
         [ "Liebe/r " <> firstParticipantName
         , "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
-        , T.intercalate newLine $ fmap nameAndTicketLine (D.participants registration)
+        , T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
         , ""
         , ""
         , "bitte überweise das Geld dafür bis zum 05.05.2018 auf unser Konto:"

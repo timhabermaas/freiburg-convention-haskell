@@ -13,12 +13,13 @@ import qualified Domain.Participant as P
 
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
+import qualified Data.List.NonEmpty as NE
 
 data Registration' persistedStatus
   = Registration
   { id :: MaybePersisted persistedStatus Id
   , email :: T.Text
-  , participants :: [P.Participant' persistedStatus] -- TODO: Use non-empty list
+  , participants :: NE.NonEmpty (P.Participant' persistedStatus)
   , comment :: Maybe T.Text
   , paymentCode :: MaybePersisted persistedStatus PaymentCode
   , registeredAt :: MaybePersisted persistedStatus UTCTime

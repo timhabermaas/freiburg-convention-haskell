@@ -2,7 +2,8 @@ module IO.Mailer.PrinterMailer
     ( withConfig
     ) where
 
-import IO.Mailer.Internal (Handle(..), Mail)
+import IO.Mailer.Internal (Handle(..), Mail(..))
+import qualified Data.Text.IO as TIO
 
 new :: IO Handle
 new = pure $ Handle $ sendMail'
@@ -10,7 +11,7 @@ new = pure $ Handle $ sendMail'
 sendMail' :: Mail -> IO ()
 sendMail' mail = do
     putStrLn "==Sending mail=="
-    putStrLn $ show mail
+    TIO.putStrLn $ mailBody mail
     putStrLn "==End Sending mail=="
 
 withConfig :: (Handle -> IO a) -> IO a

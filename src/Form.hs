@@ -11,6 +11,7 @@ import Types
 import qualified Text.Digestive.Form as DF
 import qualified Text.Digestive.Types as DT
 import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
 import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
 import qualified Domain.Registration as Domain
 import qualified Domain.Participant as Domain
@@ -141,5 +142,5 @@ optionalText :: Monad m => DF.Form T.Text m (Maybe T.Text)
 optionalText =
     (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
 
-mustContainAtLeastOne :: Monad m => DF.Form T.Text m [a] -> DF.Form T.Text m [a]
-mustContainAtLeastOne form = DF.check "Mindestens ein Teilnehmer muss angegeben werden." (not . null) form
+mustContainAtLeastOne :: Monad m => DF.Form T.Text m [a] -> DF.Form T.Text m (NE.NonEmpty a)
+mustContainAtLeastOne form = NE.fromList <$> DF.check "Mindestens ein Teilnehmer muss angegeben werden." (not . null) form

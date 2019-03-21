@@ -26,6 +26,7 @@ import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.FromField (FromField, fromField)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
 
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.Time.Calendar (Day)
@@ -158,7 +159,7 @@ getRegistration (Handle pool) (DT.Id id) = do
     Pool.withResource pool $ \conn -> do
         [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only id)
         participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation FROM participants WHERE registrationId = ?" (PSQL.Only id)
-        pure $ R.Registration (DT.Id id) email participants comment (DT.PaymentCode paymentCode) registeredAt
+        pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt
 
 
 deleteRegistration :: Handle -> DbId Participant -> IO ()
