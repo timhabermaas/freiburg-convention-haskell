@@ -66,7 +66,7 @@ ticketForm = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
     ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
     ticketChoicesWithLabel = zip Domain.ticketChoices $ ticketChoiceLabel <$> Domain.ticketChoices
     ticketChoiceLabel Domain.Ticket{..} = Domain.stayLabel stay <> ", " <> Domain.ageLabel ageCategory <> ": " <> priceLabel price
-    priceLabel price = T.pack $ show price ++ "€"
+    priceLabel price = T.pack $ show price
 
 -- TODO: This might benefit from using Selective Functors. We want to make a decision based on the BotStatus
 {-
