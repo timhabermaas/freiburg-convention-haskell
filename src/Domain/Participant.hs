@@ -1,4 +1,5 @@
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
@@ -11,16 +12,21 @@ module Domain.Participant
   , NewParticipant
   , PersonalInformation(..)
   , participantName
-  , Ticket
+  , participantTicket
+  , Ticket(..)
   , defaultTicket
   , Stay(..)
   , AgeCategory(..)
   , Price
-  , ticketPrice
   , ticketChoices
+  , ticketFromId
+  , ageLabel
+  , stayLabel
   ) where
 
 import Domain.SharedTypes
+import Prelude hiding (id)
+import qualified Data.Text as T
 
 data PersonalInformation = PersonalInformation
   { name :: Name
@@ -35,6 +41,12 @@ participantName p =
     case p of
         (FrisbeeParticipant _ pI _ _) -> name pI
         (JugglingParticipant _ pI _ _) -> name pI
+
+participantTicket :: Participant' status -> Ticket
+participantTicket p =
+    case p of
+        (FrisbeeParticipant _ _ t _) -> t
+        (JugglingParticipant _ _ t _) -> t
 
 data Participant' status
     = FrisbeeParticipant (MaybePersisted status Id) PersonalInformation Ticket (Either Hostel ConventionSleeping)
@@ -55,10 +67,22 @@ instance Show ExistingParticipant where
 data Stay = LongStay | ShortStay deriving (Show, Eq)
 data AgeCategory = Baby | Child | OlderThan12 deriving (Show, Eq)
 
-type Ticket = (AgeCategory, Stay)
+data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Int } deriving Show
+
+ageLabel :: AgeCategory -> T.Text
+ageLabel Baby = "0–3 Jahre"
+ageLabel Child = "4–12 Jahre"
+ageLabel OlderThan12 = ">12 Jahre"
+
+stayLabel :: Stay -> T.Text
+stayLabel LongStay = "Do.–So. inkl. Shows"
+stayLabel ShortStay = "Fr.–So. inkl. Shows"
+
+instance Eq Ticket where
+    t1 == t2 = id t1 == id t2
 
 defaultTicket :: Ticket
-defaultTicket = (OlderThan12, LongStay)
+defaultTicket = head ticketChoices
 
 newtype Price = Price Int
 
@@ -67,13 +91,17 @@ instance Show Price where
         | x == 0 = "Kostenlos"
         | otherwise = show x ++ "€"
 
+-- Make sure to not remove any tickets once this is live.
+-- Also: Tag each ticket with either juggler or frisbee to not mix them up
 ticketChoices :: [Ticket]
-ticketChoices = [(age, stay) | stay <- [LongStay, ShortStay], age <- [OlderThan12, Child, Baby]]
+ticketChoices =
+    [ Ticket (Id 1) OlderThan12 LongStay 39
+    , Ticket (Id 2) Child LongStay 20
+    , Ticket (Id 3) Baby LongStay 0
+    , Ticket (Id 4) OlderThan12 ShortStay 30
+    , Ticket (Id 5) Child ShortStay 15
+    , Ticket (Id 6) Baby ShortStay 0
+    ]
 
--- TODO: Pass in frisbee vs juggler, is called from form where we don't have complete participant
-ticketPrice :: Ticket -> Price
-ticketPrice (Baby, _) = Price 0
-ticketPrice (Child, ShortStay) = Price 15
-ticketPrice (Child, LongStay) = Price 20
-ticketPrice (OlderThan12, ShortStay) = Price 30
-ticketPrice (OlderThan12, LongStay) = Price 39
+ticketFromId :: Id -> Ticket
+ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') ticketChoices

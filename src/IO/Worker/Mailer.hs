@@ -20,13 +20,13 @@ new key =
 
 
 close :: Handle -> IO ()
-close = undefined
+close = pure ()
 
 withConfig :: String -> (Handle -> IO a) -> IO a
 withConfig key f = bracket (new key) close f
 
 from :: Client.MailAddress
-from = Client.MailAddress "info@jonglieren-in-freiburg.de" "Jonglieren in Freiburg e.V."
+from = Client.MailAddress "orga@jonglieren-in-freiburg.de" "Jonglieren in Freiburg e.V."
 
 domainToClient :: MailAddress -> T.Text -> Client.MailAddress
 domainToClient (MailAddress text) name = Client.MailAddress text name
@@ -39,6 +39,3 @@ getSendgridMail (Mail body subject (address, name)) =
 
 sendMail' :: String -> Mail -> IO ()
 sendMail' key mail = void $ Client.sendMail (Client.ApiKey $ T.pack key) $ getSendgridMail mail
-
--- TODO: Use a non-sending email client for development (e.g. if no sendgrid API key has been defined).
--- Therefore we have to split the client from the worker.

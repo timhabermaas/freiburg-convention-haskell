@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Form
     ( newRegisterForm
@@ -14,6 +15,7 @@ import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
 import qualified Domain.Registration as Domain
 import qualified Domain.Participant as Domain
 import qualified Domain.SharedTypes as SharedTypes
+import Prelude hiding (id)
 
 data BotCheckResult a = IsBot | IsHuman a deriving Show
 
@@ -28,6 +30,9 @@ newRegisterForm _ = checkForBot $
     Domain.Registration <$> pure ()
                         <*> "email" DF..: mustBePresent (DF.text Nothing)
                         <*> "participants" DF..: mustContainAtLeastOne (fmap (filter (not . participantIsEmpty)) $ DF.listOf participantForm (Just $ replicate 5 defaultParticipant))
+                        <*> "comment" DF..: optionalText
+                        <*> pure ()
+                        <*> pure ()
   where
     defaultParticipant :: Domain.NewParticipant
     defaultParticipant =
@@ -38,7 +43,7 @@ participantForm _def =
     buildParticipant <$> "name" DF..: DF.text Nothing
                      <*> "birthday" DF..: birthdayFields
                      <*> "ticket" DF..: ticketForm
-                     <*> "accomodation" DF..: sleepingForm
+                     <*> "accommodation" DF..: sleepingForm
   where
     buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.ConventionSleeping -> Domain.NewParticipant
     buildParticipant name birthday ticket sleeping = Domain.JugglingParticipant () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket sleeping
@@ -56,15 +61,11 @@ sleepingForm = DF.choice allChoices $ Just Domain.Gym
 ticketForm :: Monad m => DF.Form T.Text m Domain.Ticket
 ticketForm = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
   where
+    -- TODO: identifier should probably not be the entire Domain.Ticket, but only the id
     ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
     ticketChoicesWithLabel = zip Domain.ticketChoices $ ticketChoiceLabel <$> Domain.ticketChoices
-    ticketChoiceLabel t@(age, stay) = stayLabel stay <> ", " <> ageLabel age <> ": " <> priceLabel t
-    stayLabel Domain.ShortStay = "Fr – So inkl. Shows"
-    stayLabel Domain.LongStay = "Do – So inkl. Shows"
-    ageLabel Domain.Baby = "0-3 Jahre"
-    ageLabel Domain.Child = "4-12 Jahre"
-    ageLabel Domain.OlderThan12 = ">12 Jahre"
-    priceLabel = T.pack . show . Domain.ticketPrice
+    ticketChoiceLabel Domain.Ticket{..} = Domain.stayLabel stay <> ", " <> Domain.ageLabel ageCategory <> ": " <> priceLabel price
+    priceLabel price = T.pack $ show price ++ "€"
 
 -- TODO: This might benefit from using Selective Functors. We want to make a decision based on the BotStatus
 {-
@@ -135,6 +136,10 @@ mustBePresent :: (Monad m) => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 mustBePresent = DF.check "muss ausgefüllt werden" notEmpty
   where
     notEmpty = not . T.null . T.strip
+
+optionalText :: Monad m => DF.Form T.Text m (Maybe T.Text)
+optionalText =
+    (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
 
 mustContainAtLeastOne :: Monad m => DF.Form T.Text m [a] -> DF.Form T.Text m [a]
 mustContainAtLeastOne form = DF.check "Mindestens ein Teilnehmer muss angegeben werden." (not . null) form

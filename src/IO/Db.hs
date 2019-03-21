@@ -5,7 +5,7 @@
 
 module IO.Db
     ( migrate
-    , saveRegistration
+    , getRegistration
     , saveRegistration'
     , deleteRegistration
     , allRegistrations
@@ -17,7 +17,7 @@ module IO.Db
     ) where
 
 import Control.Exception (bracket)
-import Control.Monad (void)
+import Control.Monad (void, forM_)
 import Data.String (IsString(fromString))
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PSQL
@@ -42,7 +42,7 @@ instance FromField P.ConventionSleeping where
         case res :: String of
             "gym" -> pure P.Gym
             "camping" -> pure P.Camping
-            "other" -> pure P.SelfOrganized
+            "selfOrganized" -> pure P.SelfOrganized
             _ -> fail "ConventionSleeping needs to be either gym, camping or other"
 
 instance FromField P.Hostel where
@@ -59,14 +59,17 @@ instance FromRow P.ExistingParticipant where
         type_ <- field
         name <- DT.Name <$> field
         birthday <- DT.Birthday <$> field
+        ticketId <- DT.Id <$> field
         let pI = P.PersonalInformation name birthday
         case type_ :: T.Text of
             "frisbee" -> do
                 sleeping <- field
+                -- TODO: Grab ticket from frisbee tickets
                 pure $ P.FrisbeeParticipant id_ pI undefined sleeping
             "juggler" -> do
+                let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                pure $ P.JugglingParticipant id_ pI undefined sleeping
+                pure $ P.JugglingParticipant id_ pI ticket sleeping
             _ -> fail "type_ must be either frisbee or juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types
@@ -124,17 +127,39 @@ withConfig url f = do
       (\pool -> Pool.destroyAllResources pool)
       (\pool -> f (Handle pool))
 
+accommodationToText :: P.ConventionSleeping -> T.Text
+accommodationToText P.Gym = "gym"
+accommodationToText P.Camping = "camping"
+accommodationToText P.SelfOrganized = "selfOrganized"
 
-saveRegistration' :: Handle -> R.NewRegistration -> IO ()
-saveRegistration' (Handle pool) p =
-    Pool.withResource pool $ \conn -> do
-        void $ PSQL.execute conn "" ()
+accommodationFromText :: T.Text -> P.ConventionSleeping
+accommodationFromText t
+    | t == "gym" = P.Gym
+    | t == "camping" = P.Camping
+    | t == "selfOrganized" = P.SelfOrganized
+    | otherwise = error "couldn't parse accomodation"
 
-saveRegistration :: Handle -> Participant -> IO ()
-saveRegistration (Handle pool) Participant{..} =
+saveRegistration' :: Handle -> R.NewRegistration -> IO DT.Id
+saveRegistration' (Handle pool) R.Registration{..} =
     Pool.withResource pool $ \conn -> do
-        t <- getCurrentTime
-        void $ PSQL.execute conn "INSERT INTO participants (name, birthday, street, postalCode, city, country, registeredAt, sleepovers, comment, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" (participantName, participantBirthday, participantStreet, participantPostalCode, participantCity, participantCountry, t, sleepoversToText participantSleepovers, participantComment, participantEmail)
+        PSQL.withTransaction conn $ do
+            t <- getCurrentTime
+            [PSQL.Only registrationId] <- PSQL.query conn "INSERT INTO registrations (email, paymentCode, comment, registeredAt) VALUES (?, ?, ?, ?) RETURNING id" (email, "0" :: String, comment, t)
+            PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
+            forM_ participants $ \p -> do
+                case p of
+                    P.JugglingParticipant () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) sleeping ->
+                        -- TODO: Use ToRow instance
+                        PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, accommodationToText sleeping, ticketId, "juggler" :: T.Text)
+            pure $ DT.Id registrationId
+
+getRegistration :: Handle -> DT.Id -> IO R.ExistingRegistration
+getRegistration (Handle pool) (DT.Id id) = do
+    Pool.withResource pool $ \conn -> do
+        [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only id)
+        participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation FROM participants WHERE registrationId = ?" (PSQL.Only id)
+        pure $ R.Registration (DT.Id id) email participants comment (DT.PaymentCode paymentCode) registeredAt
+
 
 deleteRegistration :: Handle -> DbId Participant -> IO ()
 deleteRegistration (Handle pool) (DbId id') =
@@ -163,7 +188,16 @@ migrate (Handle pool) =
         , "id SERIAL PRIMARY KEY,"
         , "name text NOT NULL,"
         , "birthday date NOT NULL,"
-        , "sleepovers text NOT NULL,"
-        , "registeredAt timestamptz NOT NULL,"
-        , "comment text);"
+        , "registrationId int NOT NULL,"
+        , "accommodation text NOT NULL,"
+        , "type text NOT NULL,"
+        , "ticketId int NOT NULL);"
+        -- TODO: Ticket => Map (,) to two columns
+
+        , "CREATE TABLE IF NOT EXISTS registrations ("
+        , "id SERIAL PRIMARY KEY,"
+        , "email text NOT NULL,"
+        , "paymentCode text NOT NULL,"
+        , "comment text,"
+        , "registeredAt timestamptz NOT NULL);"
         ]

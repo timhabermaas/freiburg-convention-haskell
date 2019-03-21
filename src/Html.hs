@@ -197,9 +197,51 @@ participantForm view currentIndex = do
                             formErrorMessage "ticket" view
                     col 6 $ do
                         H.div ! A.class_ "form-group" $ do
-                            label "Unterkunft" "accomodation" view
-                            DH.inputSelect "accomodation" (modifiedView view) ! A.class_ "form-control"
-                            formErrorMessage "accomodation" view
+                            label "Unterkunft" "accommodation" view
+                            DH.inputSelect "accommodation" (modifiedView view) ! A.class_ "form-control"
+                            formErrorMessage "accommodation" view
+
+jugglingRegisterForm :: DV.View T.Text -> H.Html
+jugglingRegisterForm view = do
+    H.form ! A.action "/register" ! A.method "post" $ do
+        H.div ! A.class_ "form-group" $ do
+            label' "email" view "E-Mail"
+            DH.inputText "email" view ! A.class_ "form-control"
+            formErrorMessage "email" view
+        H.div ! A.class_ "form-group d-none" $ do
+            label "Name" "botField" view
+            DH.inputText "botField" view ! A.class_ "form-control"
+
+        formErrorMessage "participants" view
+        mapM_ (\(v, i) -> participantForm v i) $ DV.listSubViews "participants" view `zip` [1..]
+
+        H.div $ do
+            H.a ! A.href "#" ! A.id "link" $ do
+                "Weitere Teilnehmer anmelden"
+        H.br
+
+        H.div ! A.class_ "form-group" $ do
+            label "Willst du uns noch etwas mitteilen?" "comment" view
+            DH.inputTextArea Nothing Nothing "comment" (modifiedView view) ! A.class_ "form-control"
+            formErrorMessage "comment" view
+
+        H.div ! A.class_ "form-group" $ do
+            H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Anmelden"
+
+        H.script $ do
+            "var elements = document.getElementsByClassName('participant');\
+            \for (var i = 1; i < elements.length; i++) {\
+                \elements[i].classList.add('d-none');\
+            \}\
+            \var link = document.getElementById('link');\
+            \link.addEventListener('click', function(e){\
+                \e.preventDefault();\
+                \for (var i = 1; i < elements.length; i++) {\
+                \elements[i].classList.remove('d-none');\
+                \}\
+                \link.classList.add('d-none');\
+            \})\
+            \"
 
 registerPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
 registerPage view isOverLimit = layout $ do
@@ -209,49 +251,12 @@ registerPage view isOverLimit = layout $ do
     row $ do
         col 12 $ do
             noSleepingMessage isOverLimit
-            H.form ! A.action "/register" ! A.method "post" $ do
-                H.div ! A.class_ "form-group" $ do
-                    label' "email" view "E-Mail"
-                    DH.inputText "email" view ! A.class_ "form-control"
-                    formErrorMessage "email" view
-                H.div ! A.class_ "form-group d-none" $ do
-                    label "Name" "botField" view
-                    DH.inputText "botField" view ! A.class_ "form-control"
-
-                formErrorMessage "participants" view
-                mapM_ (\(v, i) -> participantForm v i) $ DV.listSubViews "participants" view `zip` [1..]
-
-                H.div $ do
-                    H.a ! A.href "#" ! A.id "link" $ do
-                        "Weitere Teilnehmer anmelden"
-                H.br
-
-                H.script $ do
-                    "var elements = document.getElementsByClassName('participant');\
-                    \for (var i = 1; i < elements.length; i++) {\
-                      \elements[i].classList.add('d-none');\
-                    \}\
-                    \var link = document.getElementById('link');\
-                    \link.addEventListener('click', function(e){\
-                      \e.preventDefault();\
-                      \for (var i = 1; i < elements.length; i++) {\
-                        \elements[i].classList.remove('d-none');\
-                      \}\
-                      \link.classList.add('d-none');\
-                    \})\
-                    \"
-                {-
-                renderUnless (isOverLimit == (GymSleepingLimitReached, CampingSleepingLimitReached)) $ do
-                    H.div ! A.class_ "form-group" $ do
-                        H.h4 "Übernachtung"
-                        bootstrapRadios "sleepover" (modifiedView view)
-                H.div ! A.class_ "form-group" $ do
-                    label "Willst du uns noch etwas mitteilen?" "comment" view
-                    DH.inputTextArea Nothing Nothing "comment" (modifiedView view) ! A.class_ "form-control"
-                    formErrorMessage "comment" view
-                -}
-                H.div ! A.class_ "form-group" $ do
-                    H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Anmelden"
+            H.ul ! A.class_ "nav nav-tabs" $ do
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link active" ! A.href "#" $ "Jonglier-Convention"
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link" ! A.href "#" $ "Frisbee-Meisterschaft"
+            jugglingRegisterForm view
 
 
 formErrorMessage :: T.Text -> DV.View T.Text -> Html

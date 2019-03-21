@@ -35,6 +35,9 @@ import qualified Data.Maybe as M
 import qualified IO.Mailer as Mailer
 import Types
 import Util
+import qualified Domain.Registration as D
+import qualified Domain.Participant as P
+import qualified Domain.SharedTypes as DT
 
 data CSV
 
@@ -64,7 +67,7 @@ data Config = Config
 
 startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe String -> IO ()
 startApp dbUrl port participationLimit campingLimit pw maybeSendGridApiKey = do
-    let mailerConfig = maybe Mailer.InMemoryConfig Mailer.SendGridConfig maybeSendGridApiKey
+    let mailerConfig = maybe Mailer.PrinterConfig Mailer.SendGridConfig maybeSendGridApiKey
     Mailer.withConfig mailerConfig $ \mailHandle -> do
         Db.withConfig dbUrl $ \db -> do
             Db.migrate db
@@ -105,6 +108,8 @@ server db mailerHandle limits =
 
 isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
 isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
+    pure (EnoughGymSleepingSpots, EnoughTentSpots)
+    {-
     sleepovers <- liftIO $ fmap Db.dbParticipantSleepovers <$> Db.allRegistrations handle
     let gymLimitReached =
             if gymSleepCount sleepovers >= gymLimit then
@@ -116,7 +121,7 @@ isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit
                 CampingSleepingLimitReached
             else
                 EnoughTentSpots
-    pure (gymLimitReached, campingLimitReached)
+    pure (gymLimitReached, campingLimitReached) -}
 
 registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
 registerHandler conn limits = do
@@ -181,7 +186,9 @@ postRegisterHandler conn mailerHandle limits body = do
                     redirectTo "/success"
                 Form.IsHuman registration -> do
                     liftIO $ putStrLn $ show registration
-                    liftIO $ Db.saveRegistration' conn registration
+                    registrationId <- liftIO $ Db.saveRegistration' conn registration
+                    registration <- liftIO $ Db.getRegistration conn registrationId
+                    liftIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
                     {-
                     let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
                     let email = Mailer.Mail "hallo! :)" "some subject" to
@@ -232,3 +239,35 @@ servantPathEnv body _ = pure env
   where
     lookupParam p = lookup (DF.fromPath p) body
     env path = return (DF.TextInput <$> (M.maybeToList (lookupParam path)))
+
+
+mailForRegistration :: D.ExistingRegistration -> Mailer.Mail
+mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, firstParticipantName)
+  where
+    (DT.Name firstParticipantName) = P.participantName $ head $ D.participants registration
+    mailAddress = DT.MailAddress $ D.email registration
+    subject = "Bestellbestätigung Freiburger Jonglierfestival"
+    newLine = "<br>"
+    nameAndTicketLine p =
+        let
+            (P.Ticket _ age stay price) = P.participantTicket p
+            (DT.Name name) = P.participantName p
+        in
+            "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price) <> "€"
+    mailBody = T.intercalate newLine
+        [ "Liebe/r " <> firstParticipantName
+        , "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+        , T.intercalate newLine $ fmap nameAndTicketLine (D.participants registration)
+        , ""
+        , ""
+        , "bitte überweise das Geld dafür bis zum 05.05.2018 auf unser Konto:"
+        , "Empfänger: Jonglieren in Freiburg e.V."
+        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , "IBAN: DE26 6805 0101 0012 0917 91"
+        , "BIC: FRSPDE66XXX"
+        , "Verwendungszweck: TBD"
+        , ""
+        , "Wir freuen uns Dich auf dem Festival zu sehen."
+        , "Viele Grüße Dein"
+        , "Orgateam"
+        ]

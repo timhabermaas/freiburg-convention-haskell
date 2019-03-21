@@ -14,13 +14,14 @@ module Domain.SharedTypes
   , MaybePersisted()
   , PersistedStatus(..)
   , nameEmpty
+  , PaymentCode(..)
   ) where
 
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Calendar (Day)
 
-newtype Id = Id Int deriving Show
+newtype Id = Id Int deriving (Show, Eq)
 newtype RegisteredAt = RegisteredAt UTCTime deriving Show
 newtype Birthday = Birthday Day deriving Show
 newtype Name = Name T.Text deriving Show
@@ -46,3 +47,5 @@ type family MaybePersisted (status :: PersistedStatus) a where
 
 nameEmpty :: Name -> Bool
 nameEmpty (Name t) = T.null $ T.strip t
+
+newtype PaymentCode = PaymentCode T.Text deriving (Eq, Show)

@@ -22,6 +22,7 @@ library
                      , IO.Mailer
                      , IO.Mailer.InMemoryMailer
                      , IO.Mailer.Internal
+                     , IO.Mailer.PrinterMailer
                      , IO.Mailer.SendGridMailer
                      , IO.Db
                      , Html
