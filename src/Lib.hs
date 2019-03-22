@@ -260,22 +260,23 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
             (DT.Name name) = P.participantName p
         in
             "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
-    mailBody = T.intercalate newLine
-        [ "Liebe/r " <> firstParticipantName
-        , "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
-        , ""
-        , T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
-        , ""
-        , ""
-        , "bitte überweise das Geld dafür bis zum 05.05.2019 auf unser Konto:"
-        , "Empfänger: Jonglieren in Freiburg e.V."
-        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
-        , "IBAN: DE26 6805 0101 0012 0917 91"
-        , "BIC: FRSPDE66XXX"
-        , "Betrag: " <> totalPrice
-        , "Verwendungszweck: " <> paymentReason
-        , ""
-        , "Wir freuen uns Dich auf dem Festival zu sehen."
-        , "Viele Grüße Dein"
-        , "Orgateam"
+    mailBody = T.intercalate newLine $ M.catMaybes
+        [ Just $ "Liebe/r " <> firstParticipantName
+        , Just $ "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+        , Just $ ""
+        , Just $ T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
+        , Just $ ""
+        , ("Außerdem hast du uns folgenden Kommentar hinterlassen: " <>) <$> D.comment registration
+        , Just $ ""
+        , Just $ "bitte überweise das Geld dafür bis zum 05.05.2019 auf unser Konto:"
+        , Just $ "Empfänger: Jonglieren in Freiburg e.V."
+        , Just $ "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , Just $ "IBAN: DE26 6805 0101 0012 0917 91"
+        , Just $ "BIC: FRSPDE66XXX"
+        , Just $ "Betrag: " <> totalPrice
+        , Just $ "Verwendungszweck: " <> paymentReason
+        , Just $ ""
+        , Just $ "Wir freuen uns Dich auf dem Festival zu sehen."
+        , Just $ "Viele Grüße Dein"
+        , Just $ "Orgateam"
         ]
