@@ -11,6 +11,7 @@ import Types
 import qualified Text.Digestive.Form as DF
 import qualified Text.Digestive.Types as DT
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.List.NonEmpty as NE
 import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
 import qualified Domain.Registration as Domain
@@ -29,7 +30,7 @@ checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "b
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
 newRegisterForm _ = checkForBot $
     Domain.Registration <$> pure ()
-                        <*> "email" DF..: mustBePresent (DF.text Nothing)
+                        <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
                         <*> "participants" DF..: mustContainAtLeastOne (fmap (filter (not . participantIsEmpty)) $ DF.listOf participantForm (Just $ replicate 5 defaultParticipant))
                         <*> "comment" DF..: optionalText
                         <*> pure ()
@@ -38,6 +39,22 @@ newRegisterForm _ = checkForBot $
     defaultParticipant :: Domain.NewParticipant
     defaultParticipant =
         Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket (Domain.JugglerDetail Domain.Gym)
+
+validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
+validateAndNormalizeEmail = DF.validate validateEmail
+  where
+    validateEmail rawEmail =
+        let
+            strippedEmail = T.strip rawEmail
+            atSignCount = T.length $ T.filter (== '@') strippedEmail
+            -- T.breakOn also returns the @, therefore remove it using drop.
+            (partBeforeAt, partAfterAt) = T.drop 1 <$> T.breakOn "@" strippedEmail
+            partBeforeAtNonEmpty = not $ T.null $ T.strip partBeforeAt
+            partAfterAtNonEmpty = not $ T.null $ T.strip partAfterAt
+        in
+            if atSignCount > 0 && partBeforeAtNonEmpty && partAfterAtNonEmpty
+                then DT.Success strippedEmail
+                else DT.Error "keine gültige E-Mail-Adresse"
 
 participantForm :: Monad m => DF.Formlet T.Text m Domain.NewParticipant
 participantForm _def =

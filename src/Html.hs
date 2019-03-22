@@ -145,6 +145,10 @@ successPage = layout $ do
     row $ do
         col 12 $ do
             H.h1 "Danke für deine Anmeldung!" ! A.class_ "text-center"
+            H.p ! A.class_ "text-center" $ do
+                "Du solltest in Kürze eine E-Mail von uns erhalten. Falls nicht, melde dich bitte unter "
+                H.a ! A.href "mailto:orga@jonglieren-in-freiburg.de" $ "orga@jonglieren-in-freiburg.de"
+                "."
 
 modifiedView :: DV.View T.Text -> DV.View H.Html
 modifiedView = fmap H.toHtml

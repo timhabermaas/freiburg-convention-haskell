@@ -18,6 +18,7 @@ import Servant.HTML.Blaze (HTML)
 import Control.Monad.IO.Class (liftIO)
 import Network.HTTP.Media ((//), (/:))
 import Data.Semigroup ((<>))
+import Control.Concurrent (forkIO)
 import qualified Data.Text as T
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text.Encoding as TE
@@ -189,7 +190,7 @@ postRegisterHandler conn mailerHandle limits body = do
                     liftIO $ putStrLn $ show registration
                     registrationId <- liftIO $ Db.saveRegistration' conn registration
                     registration <- liftIO $ Db.getRegistration conn registrationId
-                    liftIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
+                    liftIO $ forkIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
                     {-
                     let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
                     let email = Mailer.Mail "hallo! :)" "some subject" to
