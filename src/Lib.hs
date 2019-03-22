@@ -11,7 +11,7 @@ module Lib
     , Config(..)
     ) where
 
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setOnException)
 import Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import Servant
 import Servant.HTML.Blaze (HTML)
@@ -74,7 +74,9 @@ startApp dbUrl port participationLimit campingLimit pw maybeSendGridApiKey = do
         Db.withConfig dbUrl $ \db -> do
             Db.migrate db
             let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
-            run port $ logStdoutDev $ app config
+            runSettings (setOnException exceptionHandler $ setPort port defaultSettings) $ logStdoutDev $ app config
+  where
+    exceptionHandler _ ex = putStrLn $ show ex
 
 authCheck :: AdminPassword -> BasicAuthCheck ()
 authCheck (AdminPassword pw) =
@@ -129,7 +131,7 @@ registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Hand
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
     view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
-    liftIO $ putStrLn $ show $ DF.debugViewPaths view
+    --liftIO $ putStrLn $ show $ DF.debugViewPaths view
     --view <- DF.getForm "Registration" $ Form.registerForm overLimit
     pure $ Page.registerPage view overLimit
 
