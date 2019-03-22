@@ -73,8 +73,8 @@ ageLabel Child = "4–12 Jahre"
 ageLabel OlderThan12 = ">12 Jahre"
 
 stayLabel :: Stay -> T.Text
-stayLabel LongStay = "Do.–So. inkl. Shows"
-stayLabel ShortStay = "Fr.–So. inkl. Shows"
+stayLabel LongStay = "Do.–So."
+stayLabel ShortStay = "Fr.–So."
 
 instance Eq Ticket where
     t1 == t2 = id t1 == id t2
