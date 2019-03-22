@@ -137,8 +137,8 @@ registerHandler conn limits = do
 
 registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
 registrationsHandler conn limits _ = do
-    registrations <- liftIO $ Db.allRegistrations conn
-    pure $ Page.registrationListPage registrations limits
+    registrations <- liftIO $ Db.allRegistrations' conn
+    pure $ Page.registrationListPage' registrations limits
 
 
 -- Using newtype wrapper for Participant because the canonical CSV decoder/encoder for the

@@ -5,6 +5,7 @@ module Html
     ( registerPage
     , successPage
     , registrationListPage
+    , registrationListPage'
     , registrationPrintPage
     , Html
     ) where
@@ -20,12 +21,18 @@ import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.Time.LocalTime (utcToZonedTime, hoursToTimeZone, ZonedTime)
 import Data.Maybe (catMaybes, fromMaybe)
+import Prelude hiding (id)
 
 import qualified IO.Db as Db
 import Types
 import Util
+import qualified Domain.Registration as R
+import qualified Domain.SharedTypes as DT
 
 type Html = H.Html
+
+instance H.ToMarkup DT.PaymentCode where
+    toMarkup (DT.PaymentCode x) = H.toMarkup x
 
 layout :: H.Html -> H.Html
 layout inner = do
@@ -41,6 +48,70 @@ layout inner = do
             H.div ! A.class_ "container" $ do
                 H.div ! A.class_ "mb-3" $ mempty
                 inner
+
+registrationListPage' :: [R.ExistingRegistration] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
+registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit) = layout $ do
+    let sleepovers = [] -- fmap Db.dbParticipantSleepovers registrations
+    row $ do
+        col 12 $ do
+            H.h1 "Anmeldungen"
+    row $ do
+        col 12 $ do
+            H.div ! A.class_ "alert alert-primary" $ do
+                H.ul $ do
+                    {-
+                    H.li $ do
+                        H.strong $ do
+                            H.toHtml $ gymSleepCount sleepovers
+                            " von "
+                            H.toHtml $ gymSleepingLimit
+                        " Übernachtungsplätze in Klassenzimmern belegt"
+                    H.li $ do
+                        H.strong $ do
+                            H.toHtml $ campingSleepCount sleepovers
+                            " von "
+                            H.toHtml $ campingLimit
+                        " Campingspots belegt"
+                    -}
+                    H.li $ do
+                        H.strong $ H.toHtml $ length registrations
+                        " Anmeldungen"
+
+    row $ do
+        col 12 $ do
+            H.table ! A.class_ "table" $ do
+                H.thead $ do
+                    H.tr $ do
+                        H.th "E-Mail"
+                        H.th "Anzahl Teilnehmer"
+                        H.th "Anmerkungen"
+                        H.th "Verwendungszweck"
+                        H.th "Angemeldet am"
+                        H.th "Aktionen"
+                H.tbody $ mapM_ registrationRow registrations
+    {-row $ do
+        col 3 $ do
+            H.a ! A.href "/registrations.csv" $ "Download als .csv"
+        col 3 $ do
+            H.a ! A.href "/registrations/print" $ "Print stuff"
+        -}
+  where
+    registrationRow :: R.ExistingRegistration -> H.Html
+    registrationRow R.Registration{..} =
+        H.tr $ do
+            H.td $ H.toHtml email
+            H.td $ H.toHtml $ length participants
+            H.td $ H.toHtml $ fromMaybe "" comment
+            H.td $ H.toHtml $ paymentCode
+            H.td $ H.toHtml $ formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr" $ utcToBerlin registeredAt
+            H.td $ do
+                H.form ! A.action (H.toValue $ "/registrations/" <> idToText id <> "/delete")  ! A.method "post" $ do
+                    H.input ! A.onclick (H.toValue $ "return confirm('Willst du wirklich ' + '" <> email <> "' + ' ausladen?');") ! A.class_ "btn btn-danger" ! A.type_ "submit" ! A.name "delete" ! A.value "Löschen"
+    idToText (DT.Id i) = T.pack $ show i
+    gym GymSleeping = "X"
+    gym _ = ""
+    tent Camping = "X"
+    tent _ = ""
 
 registrationListPage :: [Db.DbParticipant] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
 registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit) = layout $ do

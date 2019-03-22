@@ -9,6 +9,7 @@ module IO.Db
     , saveRegistration'
     , deleteRegistration
     , allRegistrations
+    , allRegistrations'
     , allRegistrationsOrderedByName
     , DbParticipant(..)
     , DbId(..)
@@ -126,7 +127,7 @@ withConfig :: String -> (Handle -> IO a) -> IO a
 withConfig url f = do
     bracket
       (Pool.createPool (PSQL.connectPostgreSQL (BS.pack url)) (\c -> PSQL.close c) 1 30 5)
-      (\pool -> Pool.destroyAllResources pool)
+      Pool.destroyAllResources
       (\pool -> f (Handle pool))
 
 accommodationToText :: P.ConventionSleeping -> T.Text
@@ -166,7 +167,14 @@ getRegistration (Handle pool) (DT.Id id) = do
 deleteRegistration :: Handle -> DbId Participant -> IO ()
 deleteRegistration (Handle pool) (DbId id') =
     Pool.withResource pool $ \conn -> do
-        void $ PSQL.execute conn "DELETE FROM participants WHERE id = ?" (PSQL.Only id')
+        void $ PSQL.execute conn "DELETE FROM registrations WHERE id = ?" (PSQL.Only id')
+        void $ PSQL.execute conn "DELETE FROM participants WHERE registrationId = ?" (PSQL.Only id')
+
+allRegistrations' :: Handle -> IO [R.ExistingRegistration]
+allRegistrations' handle@(Handle pool) = do
+    Pool.withResource pool $ \conn -> do
+        registrationIds <- PSQL.query_ conn "SELECT id FROM registrations"
+        mapM (getRegistration handle) ((\(PSQL.Only id) -> DT.Id id) <$> registrationIds)
 
 
 allRegistrations :: Handle -> IO [DbParticipant]
