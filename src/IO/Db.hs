@@ -67,12 +67,11 @@ instance FromRow P.ExistingParticipant where
             "frisbee" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                -- TODO: Grab ticket from frisbee tickets
-                pure $ P.Participant' id_ pI ticket (P.FrisbeeDetail sleeping)
+                pure $ P.Participant' id_ pI ticket (P.ForFrisbee sleeping undefined)
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                pure $ P.Participant' id_ pI ticket (P.JugglerDetail sleeping)
+                pure $ P.Participant' id_ pI ticket (P.ForJuggler sleeping)
             _ -> fail "type_ must be either frisbee or juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types
@@ -151,7 +150,7 @@ saveRegistration' (Handle pool) R.Registration{..} =
             PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
             forM_ participants $ \p -> do
                 case p of
-                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.JugglerDetail sleeping) ->
+                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForJuggler sleeping) ->
                         -- TODO: Use ToRow instance
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, accommodationToText sleeping, ticketId, "juggler" :: T.Text)
             pure $ DT.Id registrationId
@@ -201,7 +200,8 @@ migrate (Handle pool) =
         , "registrationId int NOT NULL,"
         , "accommodation text NOT NULL,"
         , "type text NOT NULL,"
-        , "ticketId int NOT NULL);"
+        , "ticketId int NOT NULL,"
+        , "frisbeeDetails text);"
         -- TODO: Ticket => Map (,) to two columns
 
         , "CREATE TABLE IF NOT EXISTS registrations ("

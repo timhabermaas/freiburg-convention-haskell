@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Domain.SharedTypes
   ( Id(..)
@@ -16,16 +18,43 @@ module Domain.SharedTypes
   , nameEmpty
   , PaymentCode(..)
   , Price(..)
+  , City(..)
+  , Country(..)
+  , PhoneNumber(..)
+  , PlayerOrGuest(..)
+  , Division(..)
+  , Partner(..)
   ) where
 
 import qualified Data.Text as T
+import Data.Aeson (ToJSON, FromJSON)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Calendar (Day)
+import GHC.Generics
 
 newtype Id = Id Int deriving (Show, Eq)
 newtype RegisteredAt = RegisteredAt UTCTime deriving Show
 newtype Birthday = Birthday Day deriving Show
 newtype Name = Name T.Text deriving Show
+newtype City = City T.Text deriving (Show, Generic)
+newtype Country = Country T.Text deriving (Show, Generic)
+newtype PhoneNumber = PhoneNumber T.Text deriving (Show, Generic)
+data PlayerOrGuest = Player | Guest deriving (Show, Generic, Eq)
+data Division = OpenPairs | OpenCoop | MixedPairs | Other T.Text deriving (Show, Generic, Ord, Eq)
+newtype Partner division = Partner T.Text deriving (Show, Generic)
+
+instance ToJSON Country
+instance FromJSON Country
+instance ToJSON City
+instance FromJSON City
+instance ToJSON PhoneNumber
+instance FromJSON PhoneNumber
+instance ToJSON PlayerOrGuest
+instance FromJSON PlayerOrGuest
+instance ToJSON Division
+instance FromJSON Division
+instance ToJSON (Partner div)
+instance FromJSON (Partner div)
 
 newtype MailAddress = MkMailAddress T.Text deriving Show
 

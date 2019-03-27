@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Domain.Participant
   ( ConventionSleeping(..)
@@ -17,16 +19,22 @@ module Domain.Participant
   , defaultTicket
   , Stay(..)
   , AgeCategory(..)
-  , ticketChoices
+  , jugglerTicketChoices
+  , frisbeeTicketChoices
   , ticketFromId
   , ageLabel
   , stayLabel
   , ParticipantDetail(..)
+  , FrisbeeDetail(..)
   ) where
 
 import Domain.SharedTypes
+import GHC.Generics
+import Data.Aeson (ToJSON, FromJSON)
 import Prelude hiding (id)
+import qualified Data.Set as Set
 import qualified Data.Text as T
+import Data.Time.Calendar (Day, fromGregorian)
 
 data PersonalInformation = PersonalInformation
   { name :: Name
@@ -34,7 +42,7 @@ data PersonalInformation = PersonalInformation
   } deriving Show
 
 data ConventionSleeping = Gym | Camping | SelfOrganized deriving (Show, Eq)
-data Hostel = Hostel deriving Show
+data Hostel = Hostel deriving (Show, Eq)
 
 participantName :: Participant' status -> Name
 participantName (Participant' _ pI _ _) = name pI
@@ -42,15 +50,47 @@ participantName (Participant' _ pI _ _) = name pI
 participantTicket :: Participant' status -> Ticket
 participantTicket (Participant' _ _ t _) = t
 
+data FrisbeeDetail
+    = FrisbeeDetail
+    { city :: City
+    , country :: Country
+    , phoneNumber :: PhoneNumber
+    , playerOrGuest :: PlayerOrGuest
+    , divisionParticipation :: Set.Set Division -- Should actually be a non empty set
+    , partnerOpenPairs :: Maybe (Partner 'OpenPairs)
+    , partnerOpenCoop :: Maybe (Partner 'OpenCoop)
+    , partnerMixedPairs :: Maybe (Partner 'MixedPairs)
+    , lookingForPartner :: Set.Set Division
+    , arrival :: Day
+    , departure :: Day
+    } deriving (Show, Generic)
+
+defFrisbee :: FrisbeeDetail
+defFrisbee
+    = FrisbeeDetail
+    { city = City "Hamburg"
+    , country = Country "Germany"
+    , phoneNumber = PhoneNumber "121421"
+    , playerOrGuest = Player
+    , divisionParticipation = Set.singleton MixedPairs
+    , lookingForPartner = Set.empty
+    , partnerOpenPairs = Just $ Partner "Heinz Mueller"
+    , partnerOpenCoop = Just $ Partner "Desiree Mueller"
+    , partnerMixedPairs = Nothing
+    , arrival = fromGregorian 2018 03 12
+    , departure = fromGregorian 2018 03 16
+    }
+
+instance ToJSON FrisbeeDetail
+instance FromJSON FrisbeeDetail
+
 data ParticipantDetail
-    = FrisbeeDetail (Either Hostel ConventionSleeping)
-    | JugglerDetail ConventionSleeping
-    deriving Show
+    = ForFrisbee (Either Hostel ConventionSleeping) FrisbeeDetail -- City Country PlayerOrGuest (Set.Set Division) (Set.Set Division) (Partner OpenPairs) (Partner OpenCoop) (Partner MixedPairs) Day Day
+    | ForJuggler ConventionSleeping
+    deriving (Show, Generic)
 
 data Participant' status
     = Participant' (MaybePersisted status Id) PersonalInformation Ticket ParticipantDetail
-    -- = FrisbeeParticipant (MaybePersisted status Id) PersonalInformation Ticket (Either Hostel ConventionSleeping)
-    -- | JugglingParticipant (MaybePersisted status Id) PersonalInformation Ticket ConventionSleeping
 
 type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted
@@ -80,13 +120,13 @@ instance Eq Ticket where
     t1 == t2 = id t1 == id t2
 
 defaultTicket :: Ticket
-defaultTicket = head ticketChoices
+defaultTicket = head jugglerTicketChoices
 
 
 -- Make sure to not remove any tickets once this is live.
 -- Also: Tag each ticket with either juggler or frisbee to not mix them up
-ticketChoices :: [Ticket]
-ticketChoices =
+jugglerTicketChoices :: [Ticket]
+jugglerTicketChoices =
     [ Ticket (Id 1) OlderThan12 LongStay (Price 39)
     , Ticket (Id 2) Child LongStay (Price 20)
     , Ticket (Id 3) Baby LongStay (Price 0)
@@ -95,5 +135,17 @@ ticketChoices =
     , Ticket (Id 6) Baby ShortStay (Price 0)
     ]
 
+frisbeeTicketChoices :: [Ticket]
+frisbeeTicketChoices =
+    [ Ticket (Id 7) OlderThan12 LongStay (Price 44)
+    , Ticket (Id 8) Child LongStay (Price 25)
+    , Ticket (Id 9) Baby LongStay (Price 0)
+    , Ticket (Id 10) OlderThan12 ShortStay (Price 35)
+    , Ticket (Id 11) Child ShortStay (Price 20)
+    , Ticket (Id 12) Baby ShortStay (Price 0)
+    ]
+
+allTicketChoices = jugglerTicketChoices ++ frisbeeTicketChoices
+
 ticketFromId :: Id -> Ticket
-ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') ticketChoices
+ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') allTicketChoices

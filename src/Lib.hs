@@ -52,6 +52,7 @@ instance MimeRender CSV BSL.ByteString where
 type API
     = Get '[HTML] Page.Html
  :<|> "register" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
+ :<|> "registerFrisbee" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "success" :> Get '[HTML] Page.Html
  :<|> "admin" :> BasicAuth "foo-realm" () :> Get '[HTML] Page.Html
  :<|> "registrations.csv" :> BasicAuth "foo-realm" () :> Get '[CSV] BSL.ByteString
@@ -104,6 +105,7 @@ server :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit)
 server db mailerHandle limits =
          registerHandler db limits
     :<|> postRegisterHandler db mailerHandle limits
+    :<|> postRegisterFrisbeeHandler db mailerHandle limits
     :<|> successHandler
     :<|> registrationsHandler db limits
     :<|> registrationsCsvHandler db
@@ -131,9 +133,10 @@ registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Hand
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
     view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
+    viewFrisbee <- DF.getForm "FrisbeeRegistration" $ Form.newFrisbeeRegisterForm overLimit
     --liftIO $ putStrLn $ show $ DF.debugViewPaths view
     --view <- DF.getForm "Registration" $ Form.registerForm overLimit
-    pure $ Page.registerPage view overLimit
+    pure $ Page.registerPage view viewFrisbee overLimit
 
 registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
 registrationsHandler conn limits _ = do
@@ -175,14 +178,15 @@ registrationsCsvHandler conn _ = do
     let headers = fixEncoding <$> V.fromList [ "Name", "Adresse", "Land", "Übernachtung", "Anmerkung" ]
     pure $ Csv.encodeByName headers $ fmap CsvParticipant registrations
 
-postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
-postRegisterHandler conn mailerHandle limits body = do
+postRegisterFrisbeeHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
+postRegisterFrisbeeHandler conn mailerHandle limits body = do
     overLimit <- liftIO $ isOverLimit conn limits
-    r <- DF.postForm "Registration" (Form.newRegisterForm overLimit) $ servantPathEnv body
+    r <- DF.postForm "FrisbeeRegistration" (Form.newFrisbeeRegisterForm overLimit) $ servantPathEnv body
     case r of
         (view, Nothing) -> do
             liftIO $ print view
-            pure $ Page.registerPage view overLimit
+            viewJuggler <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
+            pure $ Page.registerPage viewJuggler view overLimit
         (_, Just botCheckedRegistration) -> do
             case botCheckedRegistration of
                 Form.IsBot -> do
@@ -193,31 +197,28 @@ postRegisterHandler conn mailerHandle limits body = do
                     registrationId <- liftIO $ Db.saveRegistration' conn registration
                     registration <- liftIO $ Db.getRegistration conn registrationId
                     liftIO $ forkIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
-                    {-
-                    let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
-                    let email = Mailer.Mail "hallo! :)" "some subject" to
-                    liftIO $ Mailer.sendMail mailerHandle email
-                    liftIO $ putStrLn $ show email
-                    liftIO $ Db.saveRegistration conn registration
-                    -}
                     redirectTo "/success"
-    --r <- DF.postForm "Registration" (Form.registerForm overLimit) $ servantPathEnv body
-    {-
+
+postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
+postRegisterHandler conn mailerHandle limits body = do
+    overLimit <- liftIO $ isOverLimit conn limits
+    r <- DF.postForm "Registration" (Form.newRegisterForm overLimit) $ servantPathEnv body
     case r of
         (view, Nothing) -> do
             liftIO $ print view
-            pure $ Page.registerPage view overLimit
-        (_, Just (botStatus, registration)) ->
-            case botStatus of
-                Form.IsBot -> redirectTo "/success"
-                Form.IsHuman -> do
-                    let to = (M.fromJust $ Form.participantEmail registration >>= Domain.mkMailAddress, Form.participantName registration)
-                    let email = Mailer.Mail "hallo! :)" "some subject" to
-                    liftIO $ Mailer.sendMail mailerHandle email
-                    liftIO $ putStrLn $ show email
-                    liftIO $ Db.saveRegistration conn registration
+            viewFrisbee <- DF.getForm "FrisbeeRegistration" $ Form.newFrisbeeRegisterForm overLimit
+            pure $ Page.registerPage view viewFrisbee overLimit
+        (_, Just botCheckedRegistration) -> do
+            case botCheckedRegistration of
+                Form.IsBot -> do
+                    liftIO $ putStrLn "is bot"
                     redirectTo "/success"
-        -}
+                Form.IsHuman registration -> do
+                    liftIO $ putStrLn $ show registration
+                    registrationId <- liftIO $ Db.saveRegistration' conn registration
+                    registration <- liftIO $ Db.getRegistration conn registrationId
+                    liftIO $ forkIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
+                    redirectTo "/success"
 
 deleteRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
 deleteRegistrationsHandler conn _ (ParticipantId participantId) = do
@@ -241,8 +242,10 @@ redirectTo url =
 servantPathEnv :: (Monad m) => [(T.Text, T.Text)] -> DF.FormEncType -> m (DF.Env m)
 servantPathEnv body _ = pure env
   where
-    lookupParam p = lookup (DF.fromPath p) body
-    env path = return (DF.TextInput <$> (M.maybeToList (lookupParam path)))
+    lookupParam :: DF.Path -> [T.Text]
+    lookupParam p = snd <$> filter (\(k, v) -> k == DF.fromPath p) body
+    env :: (Monad m) => DF.Path -> m [DF.FormInput]
+    env path = return (DF.TextInput <$> lookupParam path)
 
 
 mailForRegistration :: D.ExistingRegistration -> Mailer.Mail
