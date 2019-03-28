@@ -34,4 +34,4 @@ domainToClient _ _ = undefined -- TODO: Why does COMPLETE not work when defining
 
 getSendgridMail :: Mail -> Client.Mail () ()
 getSendgridMail (Mail body subject (address, name)) =
-    Client.mail [Client.personalization $ fromList [domainToClient address name]] from subject (fromList [Client.mailContentText body])
+    Client.mail [(Client.personalization $ fromList [domainToClient address name]) { Client._personalizationCc = Just [from] }] from subject (fromList [Client.mailContentText body])
