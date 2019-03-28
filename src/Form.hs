@@ -82,12 +82,12 @@ frisbeeForm _def =
     buildFrisbeeDetail <$> "city" DF..: fmap SharedTypes.City (mustBePresent (DF.text Nothing))
                        <*> "country" DF..: fmap SharedTypes.Country (mustBePresent (DF.text Nothing))
                        <*> "phoneNumber" DF..: fmap SharedTypes.PhoneNumber (mustBePresent (DF.text Nothing))
-                       <*> "playerOrGuest" DF..: DF.choice [(SharedTypes.Player, "Player"), (SharedTypes.Guest, "Guest")] Nothing
-                       <*> "divisionParticipation" DF..: multipleWithFreeFormField [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
+                       <*> "playerOrGuest" DF..: pure SharedTypes.Player -- DF.choice [(SharedTypes.Player, "Player"), (SharedTypes.Guest, "Guest")] Nothing
+                       <*> "divisionParticipation" DF..: multipleWithFreeFormField Mandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
                        <*> "partnerOpenPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
                        <*> "partnerOpenCoop" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
                        <*> "partnerMixedPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                       <*> "lookingForPartner" DF..: multipleWithFreeFormField [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
+                       <*> "lookingForPartner" DF..: multipleWithFreeFormField NotMandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
                        <*> "arrival" DF..: dateFields (2019, 5, 30)
                        <*> "departure" DF..: dateFields (2019, 6, 2)
 
@@ -96,12 +96,18 @@ frisbeeForm _def =
     multiple :: (Monad m, Ord a) => [(a, T.Text)] -> DF.Form T.Text m (Set.Set a)
     multiple choices = Set.fromList <$> DF.choiceMultiple choices Nothing
 
+data Mandatory = Mandatory | NotMandatory
+
 -- Represents multiple choices with an "other" field where the user can type in any value.
-multipleWithFreeFormField :: (Ord a, Monad m) => [(a, T.Text)] -> (T.Text -> a, T.Text) -> DF.Form T.Text m (Set.Set a)
-multipleWithFreeFormField choices (freeFormConstructor, freeFormLabel) =
+multipleWithFreeFormField :: (Ord a, Monad m) => Mandatory -> [(a, T.Text)] -> (T.Text -> a, T.Text) -> DF.Form T.Text m (Set.Set a)
+multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel) =
     foo freeFormConstructor <$> "text" DF..: DF.text Nothing
-                            <*> "choice" DF..: fmap NE.toList (mustContainAtLeastOne "muss ausgefüllt werden" (DF.choiceMultiple allChoices Nothing))
+                            <*> "choice" DF..: mandatoryOrNot (DF.choiceMultiple allChoices Nothing)
   where
+    mandatoryOrNot =
+        case mandatory of
+            Mandatory -> fmap NE.toList . mustContainAtLeastOne "muss ausgefüllt werden"
+            NotMandatory -> (\x -> x)
     allChoices = ((\(value, label) -> (Just value, label)) <$> choices) ++ [(Nothing, freeFormLabel)]
     foo :: (Ord a) => (T.Text -> a) -> T.Text -> [Maybe a] -> Set.Set a
     foo f text selected = Set.fromList (unwrapElement text f <$> selected)

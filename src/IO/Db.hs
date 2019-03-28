@@ -24,19 +24,26 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PSQL
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
-import Database.PostgreSQL.Simple.FromField (FromField, fromField)
+import Database.PostgreSQL.Simple.FromField (FromField, fromField, returnError)
+import Database.PostgreSQL.Simple.ToField (ToField, toField)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
 import qualified Data.List.NonEmpty as NE
 
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.Time.Calendar (Day)
+import Data.Aeson (encode, decode')
 
 import Types
 
 import qualified Domain.Participant as P
 import qualified Domain.Registration as R
 import qualified Domain.SharedTypes as DT
+
+instance ToField P.ConventionSleeping where
+    toField P.Gym = toField ("gym" :: T.Text)
+    toField P.Camping = toField ("camping" :: T.Text)
+    toField P.SelfOrganized = toField ("selfOrganized" :: T.Text)
 
 instance FromField P.ConventionSleeping where
     fromField f bs = do
@@ -45,7 +52,20 @@ instance FromField P.ConventionSleeping where
             "gym" -> pure P.Gym
             "camping" -> pure P.Camping
             "selfOrganized" -> pure P.SelfOrganized
-            _ -> fail "ConventionSleeping needs to be either gym, camping or other"
+            other -> returnError PSQL.ConversionFailed f $ "ConventionSleeping needs to be either gym, camping or other, it is " ++ other
+
+instance ToField P.Hostel where
+    toField _ = toField ("hostel" :: T.Text)
+
+instance ToField (Either P.Hostel P.ConventionSleeping) where
+    toField (Right r) = toField r
+    toField (Left l) = toField l
+
+{-
+instance {-# OVERLAPPING #-} FromField (Either P.Hostel P.ConventionSleeping) where
+    fromField f bs = Left <$> fromField f bs <|> Right <$> fromField f bs
+-}
+
 
 instance FromField P.Hostel where
     fromField f bs = do
@@ -53,7 +73,7 @@ instance FromField P.Hostel where
         if (s :: T.Text) == "hostel" then
             pure P.Hostel
         else
-            fail "Can't parse Hostel"
+            returnError PSQL.ConversionFailed f "can't parse Hostel"
 
 instance FromRow P.ExistingParticipant where
     fromRow = do
@@ -67,10 +87,13 @@ instance FromRow P.ExistingParticipant where
             "frisbee" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                pure $ P.Participant' id_ pI ticket (P.ForFrisbee sleeping undefined)
+                data' <- field
+                let (Just parsedJson) = decode' data'
+                pure $ P.Participant' id_ pI ticket (P.ForFrisbee sleeping parsedJson)
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
+                _ <- field :: RowParser (Maybe T.Text)
                 pure $ P.Participant' id_ pI ticket (P.ForJuggler sleeping)
             _ -> fail "type_ must be either frisbee or juggler"
 
@@ -129,18 +152,6 @@ withConfig url f = do
       Pool.destroyAllResources
       (\pool -> f (Handle pool))
 
-accommodationToText :: P.ConventionSleeping -> T.Text
-accommodationToText P.Gym = "gym"
-accommodationToText P.Camping = "camping"
-accommodationToText P.SelfOrganized = "selfOrganized"
-
-accommodationFromText :: T.Text -> P.ConventionSleeping
-accommodationFromText t
-    | t == "gym" = P.Gym
-    | t == "camping" = P.Camping
-    | t == "selfOrganized" = P.SelfOrganized
-    | otherwise = error "couldn't parse accomodation"
-
 saveRegistration' :: Handle -> R.NewRegistration -> IO DT.Id
 saveRegistration' (Handle pool) R.Registration{..} =
     Pool.withResource pool $ \conn -> do
@@ -151,15 +162,17 @@ saveRegistration' (Handle pool) R.Registration{..} =
             forM_ participants $ \p -> do
                 case p of
                     P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForJuggler sleeping) ->
-                        -- TODO: Use ToRow instance
-                        PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, accommodationToText sleeping, ticketId, "juggler" :: T.Text)
+                        PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "juggler" :: T.Text)
+                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForFrisbee sleeping data') -> do
+                        putStrLn "saving frisbee"
+                        PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type, frisbeeDetails) VALUES (?, ?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "frisbee" :: T.Text, encode data')
             pure $ DT.Id registrationId
 
 getRegistration :: Handle -> DT.Id -> IO R.ExistingRegistration
 getRegistration (Handle pool) (DT.Id id) = do
     Pool.withResource pool $ \conn -> do
         [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only id)
-        participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation FROM participants WHERE registrationId = ?" (PSQL.Only id)
+        participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants WHERE registrationId = ?" (PSQL.Only id)
         pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt
 
 

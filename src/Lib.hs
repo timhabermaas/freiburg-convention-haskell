@@ -20,6 +20,7 @@ import Network.HTTP.Media ((//), (/:))
 import Data.Semigroup ((<>))
 import Control.Concurrent (forkIO)
 import qualified Data.Text as T
+import qualified Data.Set as Set
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text.Encoding as TE
 import qualified Data.ByteString as BS
@@ -51,6 +52,7 @@ instance MimeRender CSV BSL.ByteString where
 
 type API
     = Get '[HTML] Page.Html
+ :<|> "frisbeeRegistration" :> Get '[HTML] Page.Html
  :<|> "register" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "registerFrisbee" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "success" :> Get '[HTML] Page.Html
@@ -104,6 +106,7 @@ api = Proxy
 server :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Server API
 server db mailerHandle limits =
          registerHandler db limits
+    :<|> frisbeeRegisterHandler db limits
     :<|> postRegisterHandler db mailerHandle limits
     :<|> postRegisterFrisbeeHandler db mailerHandle limits
     :<|> successHandler
@@ -133,10 +136,13 @@ registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Hand
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
     view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
+    pure $ Page.registerPage view overLimit
+
+frisbeeRegisterHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
+frisbeeRegisterHandler conn limits = do
+    overLimit <- liftIO $ isOverLimit conn limits
     viewFrisbee <- DF.getForm "FrisbeeRegistration" $ Form.newFrisbeeRegisterForm overLimit
-    --liftIO $ putStrLn $ show $ DF.debugViewPaths view
-    --view <- DF.getForm "Registration" $ Form.registerForm overLimit
-    pure $ Page.registerPage view viewFrisbee overLimit
+    pure $ Page.frisbeeRegisterPage viewFrisbee overLimit
 
 registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
 registrationsHandler conn limits _ = do
@@ -185,8 +191,7 @@ postRegisterFrisbeeHandler conn mailerHandle limits body = do
     case r of
         (view, Nothing) -> do
             liftIO $ print view
-            viewJuggler <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
-            pure $ Page.registerPage viewJuggler view overLimit
+            pure $ Page.registerPage view overLimit
         (_, Just botCheckedRegistration) -> do
             case botCheckedRegistration of
                 Form.IsBot -> do
@@ -206,8 +211,7 @@ postRegisterHandler conn mailerHandle limits body = do
     case r of
         (view, Nothing) -> do
             liftIO $ print view
-            viewFrisbee <- DF.getForm "FrisbeeRegistration" $ Form.newFrisbeeRegisterForm overLimit
-            pure $ Page.registerPage view viewFrisbee overLimit
+            pure $ Page.registerPage view overLimit
         (_, Just botCheckedRegistration) -> do
             case botCheckedRegistration of
                 Form.IsBot -> do
@@ -257,6 +261,14 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
     newLine = "\n\n"
     totalPrice = T.pack $ show $ D.priceToPay registration
     (DT.PaymentCode paymentReason) = D.paymentCode registration
+    optionalLinesForFrisbee =
+        case NE.head $ D.participants registration of
+            (P.Participant' _ _ _ (P.ForFrisbee _ details)) ->
+                [ Just "Bei der Frisbee-Meisterschaft hast du dich für folgende Disziplinen angemeldet:"
+                , Just ""
+                ] ++ (fmap (\d -> Just $ "* " <> DT.divisionLabel d) (Set.toList $ P.divisionParticipation details)) ++
+                [ Just "" ]
+            (P.Participant' _ _ _ (P.ForJuggler _)) -> []
     nameAndTicketLine p =
         let
             (P.Ticket _ age stay price) = P.participantTicket p
@@ -264,14 +276,15 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
         in
             "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
     mailBody = T.intercalate newLine $ M.catMaybes
-        [ Just $ "Liebe/r " <> firstParticipantName
+        ([ Just $ "Liebe/r " <> firstParticipantName
         , Just $ "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
         , Just $ ""
         , Just $ T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
         , Just $ ""
         , ("Außerdem hast du uns folgenden Kommentar hinterlassen: " <>) <$> D.comment registration
         , Just $ ""
-        , Just $ "bitte überweise das Geld dafür bis zum 05.05.2019 auf unser Konto:"
+        ] <> optionalLinesForFrisbee <>
+        [ Just $ "bitte überweise das Geld dafür bis zum 15.05.2019 auf unser Konto:"
         , Just $ "Empfänger: Jonglieren in Freiburg e.V."
         , Just $ "Bank: Sparkasse Freiburg Nördlicher Breisgau"
         , Just $ "IBAN: DE26 6805 0101 0012 0917 91"
@@ -282,4 +295,4 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
         , Just $ "Wir freuen uns Dich auf dem Festival zu sehen."
         , Just $ "Viele Grüße Dein"
         , Just $ "Orgateam"
-        ]
+        ])

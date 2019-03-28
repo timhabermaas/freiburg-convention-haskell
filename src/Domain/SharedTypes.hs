@@ -5,6 +5,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Domain.SharedTypes
   ( Id(..)
@@ -24,6 +25,7 @@ module Domain.SharedTypes
   , PlayerOrGuest(..)
   , Division(..)
   , Partner(..)
+  , divisionLabel
   ) where
 
 import qualified Data.Text as T
@@ -83,3 +85,9 @@ newtype Price = Price Int deriving (Eq, Num)
 
 instance Show Price where
     show (Price x) = show x <> "€"
+
+divisionLabel :: Division -> T.Text
+divisionLabel OpenPairs = "Open Pairs"
+divisionLabel OpenCoop = "Open Coop"
+divisionLabel MixedPairs = "Mixed Pairs"
+divisionLabel (Other t) = "Other: " <> t

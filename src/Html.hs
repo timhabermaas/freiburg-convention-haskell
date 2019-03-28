@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE GADTs                     #-}
 
 module Html
     ( registerPage
+    , frisbeeRegisterPage
     , successPage
     , registrationListPage
     , registrationListPage'
@@ -252,7 +254,7 @@ participantForm view currentIndex = do
                     label "Name" "name" view
                     DH.inputText "name" view ! A.class_ "form-control"
                     formErrorMessage "name" view
-                dateForm $ DV.subView "birthday" view
+                dateForm "Geburtsdatum" $ DV.subView "birthday" view
                 row $ do
                     col 6 $ do
                         H.div ! A.class_ "form-group" $ do
@@ -307,8 +309,8 @@ jugglingRegisterForm view = do
             \})\
             \"
 
-registerPage :: DV.View T.Text -> DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
-registerPage view frisbeeView isOverLimit = layout $ do
+registerPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
+registerPage view isOverLimit = layout $ do
     row $ do
         col 12 $ do
             H.h1 ! A.class_ "mb-4" $ "Anmeldung zur Freiburger Jonglierconvention 2019"
@@ -317,16 +319,32 @@ registerPage view frisbeeView isOverLimit = layout $ do
             noSleepingMessage isOverLimit
             H.ul ! A.class_ "nav nav-tabs" $ do
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.class_ "nav-link active" ! A.href "#" $ "Jonglier-Convention"
+                    H.a ! A.href "/" ! A.class_ "nav-link active" $ "Jonglier-Convention"
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.class_ "nav-link" ! A.href "#" $ "Frisbee-Meisterschaft"
-            --jugglingRegisterForm view
+                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link" $ "Frisbee-Meisterschaft"
+            H.br
+            jugglingRegisterForm view
+
+frisbeeRegisterPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
+frisbeeRegisterPage frisbeeView isOverLimit = layout $ do
+    row $ do
+        col 12 $ do
+            H.h1 ! A.class_ "mb-4" $ "Anmeldung zur Deutschen Freestyle Frisbee Meisterschaft 2019"
+    row $ do
+        col 12 $ do
+            noSleepingMessage isOverLimit
+            H.ul ! A.class_ "nav nav-tabs" $ do
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.href "/" ! A.class_ "nav-link" $ "Jonglier-Convention"
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link active" $ "Frisbee-Meisterschaft"
+            H.br
             frisbeeRegisterForm frisbeeView
 
-dateForm :: DV.View T.Text -> Html
-dateForm dateView = do
+dateForm :: T.Text -> DV.View T.Text -> Html
+dateForm labelText dateView = do
     H.div ! A.class_ "form-group" $ do
-        label "Geburtsdatum" "" dateView
+        label labelText "" dateView
         row $ do
             H.div ! A.class_ "col-sm-3" $ do
                 DH.inputSelect "day" (modifiedView dateView) ! A.class_ "form-control"
@@ -352,13 +370,15 @@ bootstrapCheckboxes ref view =
     in
         mapM_ checkbox options
 
-checkboxesWithOther :: DV.View T.Text -> Html
-checkboxesWithOther view = do
+checkboxesWithOther :: T.Text -> DV.View T.Text -> Html
+checkboxesWithOther labelText view = do
     let choices = DV.fieldInputChoice
     H.div ! A.class_ "form-group" $ do
-        label' "choice" view "Blub"
+        label' "choice" view (H.toHtml labelText)
         bootstrapCheckboxes "choice" (modifiedView view)
         DH.inputText "text" (modifiedView view) ! A.class_ "form-control"
+        formErrorMessage "choice" view
+
 
 frisbeeRegisterForm :: DV.View T.Text -> Html
 frisbeeRegisterForm view = do
@@ -376,7 +396,7 @@ frisbeeRegisterForm view = do
             DH.inputText "name" view ! A.class_ "form-control"
             formErrorMessage "name" view
 
-        dateForm $ DV.subView "birthday" view
+        dateForm "Geburtsdatum" $ DV.subView "birthday" view
 
         row $ do
             col 6 $ do
@@ -407,8 +427,31 @@ frisbeeRegisterForm view = do
             DH.inputText "phoneNumber" subView ! A.class_ "form-control"
             formErrorMessage "phoneNumber" subView
 
-        checkboxesWithOther (DV.subView "divisionParticipation" subView)
-        checkboxesWithOther (DV.subView "lookingForPartner" subView)
+        {-
+        H.div ! A.class_ "form-group" $ do
+            label "Player/Guest" "playerOrGuest" subView
+            DH.inputSelect "playerOrGuest" (modifiedView subView) ! A.class_ "form-control"
+            formErrorMessage "playerOrGuest" subView
+        -}
+        checkboxesWithOther "Divisions: Select the divisons you want to compete in" (DV.subView "divisionParticipation" subView)
+        H.div ! A.class_ "form-group" $ do
+            label' "partnerOpenPairs" subView "Partner Open Pairs"
+            DH.inputText "partnerOpenPairs" subView ! A.class_ "form-control"
+            formErrorMessage "partnerOpenPairs" subView
+        H.div ! A.class_ "form-group" $ do
+            label' "partnerOpenCoop" subView "Partner Open Coop"
+            DH.inputText "partnerOpenCoop" subView ! A.class_ "form-control"
+            formErrorMessage "partnerOpenCoop" subView
+        H.div ! A.class_ "form-group" $ do
+            label' "partnerMixedPairs" subView "Partner Mixed Pairs"
+            DH.inputText "partnerMixedPairs" subView ! A.class_ "form-control"
+            formErrorMessage "partnerMixedPairs" subView
+
+
+        checkboxesWithOther "Need Partners: Check boxes below, if you do not have all your partners for all divisions you want to play" (DV.subView "lookingForPartner" subView)
+
+        dateForm "Arrival" $ DV.subView "arrival" subView
+        dateForm "Departure" $ DV.subView "departure" subView
 
         H.div ! A.class_ "form-group" $ do
             label "Willst du uns noch etwas mitteilen?" "comment" view
