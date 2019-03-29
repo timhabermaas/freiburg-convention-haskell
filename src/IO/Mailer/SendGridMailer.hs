@@ -26,7 +26,7 @@ withConfig :: String -> (Handle -> IO a) -> IO a
 withConfig key f = bracket (new key) close f
 
 from :: Client.MailAddress
-from = Client.MailAddress "info@jonglieren-in-freiburg.de" "Jonglieren in Freiburg e.V."
+from = Client.MailAddress "orga@jonglieren-in-freiburg.de" "Jonglieren in Freiburg e.V."
 
 domainToClient :: MailAddress -> T.Text -> Client.MailAddress
 domainToClient (MailAddress text) name = Client.MailAddress text name
