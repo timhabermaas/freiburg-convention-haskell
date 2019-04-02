@@ -251,19 +251,19 @@ participantForm view currentIndex = do
                 H.br
                 H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
                 H.div ! A.class_ "form-group" $ do
-                    label "Name" "name" view
+                    label "Name" "Full Name" "name" view
                     DH.inputText "name" view ! A.class_ "form-control"
                     formErrorMessage "name" view
-                dateForm "Geburtsdatum" $ DV.subView "birthday" view
+                dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
                 row $ do
                     col 6 $ do
                         H.div ! A.class_ "form-group" $ do
-                            label "Festivalticket" "ticket" view
+                            label "Festivalticket" "Ticket" "ticket" view
                             DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
                             formErrorMessage "ticket" view
                     col 6 $ do
                         H.div ! A.class_ "form-group" $ do
-                            label "Unterkunft" "accommodation" view
+                            label "Unterkunft" "Accommodation" "accommodation" view
                             DH.inputSelect "accommodation" (modifiedView view) ! A.class_ "form-control"
                             formErrorMessage "accommodation" view
 
@@ -271,11 +271,11 @@ jugglingRegisterForm :: DV.View T.Text -> H.Html
 jugglingRegisterForm view = do
     H.form ! A.action "/register" ! A.method "post" $ do
         H.div ! A.class_ "form-group" $ do
-            label' "email" view "E-Mail"
+            label "E-Mail" "Email" "email" view
             DH.inputText "email" view ! A.class_ "form-control"
             formErrorMessage "email" view
         H.div ! A.class_ "form-group d-none" $ do
-            label "Name" "botField" view
+            label "Name" "Full Name" "botField" view
             DH.inputText "botField" view ! A.class_ "form-control"
 
         formErrorMessage "participants" view
@@ -284,10 +284,11 @@ jugglingRegisterForm view = do
         H.div $ do
             H.a ! A.href "#" ! A.id "link" $ do
                 "Weitere Teilnehmer anmelden"
+                H.span ! A.class_ "text-secondary" $ " (Register additional participants)"
         H.br
 
         H.div ! A.class_ "form-group" $ do
-            label "Willst du uns noch etwas mitteilen?" "comment" view
+            label "Willst du uns noch etwas mitteilen?" "Anything you want to tell us?" "comment" view
             DH.inputTextArea Nothing Nothing "comment" (modifiedView view) ! A.class_ "form-control"
             formErrorMessage "comment" view
 
@@ -319,9 +320,9 @@ registerPage view isOverLimit = layout $ do
             noSleepingMessage isOverLimit
             H.ul ! A.class_ "nav nav-tabs" $ do
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.href "/" ! A.class_ "nav-link active" $ "Jonglier-Convention"
+                    H.a ! A.href "/" ! A.class_ "nav-link active" $ "Juggling Convention/German Open Guests"
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link" $ "Frisbee-Meisterschaft"
+                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link" $ "German Open Freestyle Frisbee"
             H.br
             jugglingRegisterForm view
 
@@ -329,7 +330,7 @@ frisbeeRegisterPage :: DV.View T.Text -> (GymSleepingLimitReached, CampingSleepi
 frisbeeRegisterPage frisbeeView isOverLimit = layout $ do
     row $ do
         col 12 $ do
-            H.h1 ! A.class_ "mb-4" $ "Anmeldung zur Deutschen Freestyle Frisbee Meisterschaft 2019"
+            H.h1 ! A.class_ "mb-4" $ "Registration for German Open Freestyle Frisbee"
     row $ do
         col 12 $ do
             noSleepingMessage isOverLimit
@@ -337,14 +338,14 @@ frisbeeRegisterPage frisbeeView isOverLimit = layout $ do
                 H.li ! A.class_ "nav-item" $ do
                     H.a ! A.href "/" ! A.class_ "nav-link" $ "Jonglier-Convention"
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link active" $ "Frisbee-Meisterschaft"
+                    H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link active" $ "German Open Freestyle Frisbee"
             H.br
             frisbeeRegisterForm frisbeeView
 
-dateForm :: T.Text -> DV.View T.Text -> Html
-dateForm labelText dateView = do
+dateForm :: T.Text -> T.Text -> DV.View T.Text -> Html
+dateForm labelText englishLabelText dateView = do
     H.div ! A.class_ "form-group" $ do
-        label labelText "" dateView
+        label labelText englishLabelText "" dateView
         row $ do
             H.div ! A.class_ "col-sm-3" $ do
                 DH.inputSelect "day" (modifiedView dateView) ! A.class_ "form-control"
@@ -370,11 +371,11 @@ bootstrapCheckboxes ref view =
     in
         mapM_ checkbox options
 
-checkboxesWithOther :: T.Text -> DV.View T.Text -> Html
-checkboxesWithOther labelText view = do
+checkboxesWithOther :: T.Text -> T.Text -> DV.View T.Text -> Html
+checkboxesWithOther labelText englishLabelText view = do
     let choices = DV.fieldInputChoice
     H.div ! A.class_ "form-group" $ do
-        label' "choice" view (H.toHtml labelText)
+        label labelText englishLabelText "choice" view
         bootstrapCheckboxes "choice" (modifiedView view)
         DH.inputText "text" (modifiedView view) ! A.class_ "form-control"
         formErrorMessage "choice" view
@@ -382,48 +383,52 @@ checkboxesWithOther labelText view = do
 
 frisbeeRegisterForm :: DV.View T.Text -> Html
 frisbeeRegisterForm view = do
+    H.div ! A.class_ "alert alert-primary" ! A.role "alert" $ do
+        "Anyone not competing in the German Open should register for the juggling convention "
+        H.a ! A.href "/" $ "here"
+        ". This includes any guests of competitors."
     H.form ! A.action "/registerFrisbee" ! A.method "post" $ do
         H.div ! A.class_ "form-group" $ do
-            label' "email" view "E-Mail"
+            label "E-Mail" "Email" "email" view
             DH.inputText "email" view ! A.class_ "form-control"
             formErrorMessage "email" view
         H.div ! A.class_ "form-group d-none" $ do
-            label "Name" "botField" view
+            label "Name" "Full Name" "botField" view
             DH.inputText "botField" view ! A.class_ "form-control"
 
         H.div ! A.class_ "form-group" $ do
-            label "Name" "name" view
+            label "Name" "Full Name" "name" view
             DH.inputText "name" view ! A.class_ "form-control"
             formErrorMessage "name" view
 
-        dateForm "Geburtsdatum" $ DV.subView "birthday" view
+        dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
 
         row $ do
             col 6 $ do
                 H.div ! A.class_ "form-group" $ do
-                    label "Festivalticket" "ticket" view
+                    label "Festivalticket" "Ticket" "ticket" view
                     DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
                     formErrorMessage "ticket" view
             col 6 $ do
                 H.div ! A.class_ "form-group" $ do
-                    label "Unterkunft" "accommodation" view
+                    label "Unterkunft" "Accommodation" "accommodation" view
                     DH.inputSelect "accommodation" (modifiedView view) ! A.class_ "form-control"
                     formErrorMessage "accommodation" view
 
         let subView = DV.subView "frisbeeParticipant" view
 
         H.div ! A.class_ "form-group" $ do
-            label' "city" subView "City"
+            label "Stadt" "City" "city" subView
             DH.inputText "city" subView ! A.class_ "form-control"
             formErrorMessage "city" subView
 
         H.div ! A.class_ "form-group" $ do
-            label' "country" subView "Country"
+            label "Land" "Country" "country" subView
             DH.inputText "country" subView ! A.class_ "form-control"
             formErrorMessage "country" subView
 
         H.div ! A.class_ "form-group" $ do
-            label' "phoneNumber" subView "Mobile phone number"
+            label "Telefonnummer (mobil)" "Mobile phone number" "phoneNumber" subView
             DH.inputText "phoneNumber" subView ! A.class_ "form-control"
             formErrorMessage "phoneNumber" subView
 
@@ -433,28 +438,28 @@ frisbeeRegisterForm view = do
             DH.inputSelect "playerOrGuest" (modifiedView subView) ! A.class_ "form-control"
             formErrorMessage "playerOrGuest" subView
         -}
-        checkboxesWithOther "Divisions: Select the divisons you want to compete in" (DV.subView "divisionParticipation" subView)
+        checkboxesWithOther "Divisions: Select the divisons you want to compete in" "" (DV.subView "divisionParticipation" subView)
         H.div ! A.class_ "form-group" $ do
-            label' "partnerOpenPairs" subView "Partner Open Pairs"
+            label "Partner Open Pairs" "" "partnerOpenPairs" subView
             DH.inputText "partnerOpenPairs" subView ! A.class_ "form-control"
             formErrorMessage "partnerOpenPairs" subView
         H.div ! A.class_ "form-group" $ do
-            label' "partnerOpenCoop" subView "Partner Open Coop"
+            label "Partner Open Coop" "" "partnerOpenCoop" subView
             DH.inputText "partnerOpenCoop" subView ! A.class_ "form-control"
             formErrorMessage "partnerOpenCoop" subView
         H.div ! A.class_ "form-group" $ do
-            label' "partnerMixedPairs" subView "Partner Mixed Pairs"
+            label "Partner Mixed Pairs" "" "partnerMixedPairs" subView
             DH.inputText "partnerMixedPairs" subView ! A.class_ "form-control"
             formErrorMessage "partnerMixedPairs" subView
 
 
-        checkboxesWithOther "Need Partners: Check boxes below, if you do not have all your partners for all divisions you want to play" (DV.subView "lookingForPartner" subView)
+        checkboxesWithOther "Need Partners: Check boxes below, if you do not have all your partners for all divisions you want to play" "" (DV.subView "lookingForPartner" subView)
 
-        dateForm "Arrival" $ DV.subView "arrival" subView
-        dateForm "Departure" $ DV.subView "departure" subView
+        dateForm "Ankunft" "Arrival" $ DV.subView "arrival" subView
+        dateForm "Abreise" "Departure" $ DV.subView "departure" subView
 
         H.div ! A.class_ "form-group" $ do
-            label "Willst du uns noch etwas mitteilen?" "comment" view
+            label "Willst du uns noch etwas mitteilen?" "Anything you want to tell us?" "comment" view
             DH.inputTextArea Nothing Nothing "comment" (modifiedView view) ! A.class_ "form-control"
             formErrorMessage "comment" view
 
@@ -473,17 +478,17 @@ registrationEmail = "herxheim.convention@gmail.com"
 mailLink :: T.Text -> T.Text -> Html
 mailLink text email = H.a ! A.href (H.toValue $ "mailto:" <> email) $ H.toHtml text
 
-label :: T.Text -> T.Text -> DV.View a -> Html
-label text name view =
+label :: T.Text -> T.Text -> T.Text -> DV.View a -> Html
+label text englishText name view =
     let ref = H.toValue $ DV.absoluteRef name view
     in
-        H.label ! A.for ref $ H.toHtml text
-
-label' :: T.Text -> DV.View a -> Html -> Html
-label' name view inner =
-    let ref = H.toValue $ DV.absoluteRef name view
-    in
-        H.label ! A.for ref $ inner
+        H.label ! A.for ref $ do
+            H.toHtml text
+            if T.null englishText then
+                mempty
+            else do
+                " "
+                H.span ! A.class_ "text-secondary" $ "(" <> H.toHtml englishText <> ")"
 
 bootstrapRadios :: T.Text -> DV.View Html -> Html
 bootstrapRadios ref view =

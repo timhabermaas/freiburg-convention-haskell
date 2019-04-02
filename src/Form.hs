@@ -13,13 +13,13 @@ import qualified Text.Digestive.Form as DF
 import qualified Text.Digestive.Types as DT
 import qualified Data.Text as T
 import qualified Data.Set as Set
-import qualified Data.Text.Encoding as TE
 import qualified Data.List.NonEmpty as NE
 import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
 import qualified Domain.Registration as Domain
 import qualified Domain.Participant as Domain
 import qualified Domain.SharedTypes as SharedTypes
 import Prelude hiding (id)
+import qualified Prelude as Prelude
 
 data BotCheckResult a = IsBot | IsHuman a deriving Show
 
@@ -32,21 +32,15 @@ checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "b
 newFrisbeeRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
 newFrisbeeRegisterForm _ = checkForBot $
     buildFrisbeeRegistration <$> "name" DF..: mustBePresent (DF.text Nothing)
-                        <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                        <*> "birthday" DF..: birthdayFields
-                        <*> "ticket" DF..: ticketForm Domain.frisbeeTicketChoices
-                        <*> "accommodation" DF..: frisbeeSleepingForm
-                        <*> "frisbeeParticipant" DF..: frisbeeForm Nothing
-                        <*> "comment" DF..: optionalText
+                             <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
+                             <*> "birthday" DF..: birthdayFields
+                             <*> "ticket" DF..: ticketForm Domain.frisbeeTicketChoices
+                             <*> "accommodation" DF..: frisbeeSleepingForm
+                             <*> "frisbeeParticipant" DF..: frisbeeForm Nothing
+                             <*> "comment" DF..: optionalText
   where
     buildFrisbeeRegistration :: T.Text -> T.Text -> Day -> Domain.Ticket -> (Either Domain.Hostel Domain.ConventionSleeping) -> Domain.FrisbeeDetail -> Maybe T.Text -> Domain.NewRegistration
     buildFrisbeeRegistration name email birthday ticket sleeping details comment = Domain.Registration () email (NE.fromList [Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForFrisbee sleeping details)]) comment () ()
-    --defaultParticipant :: Domain.NewParticipant
-    --defaultParticipant =
-        --Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket (Domain.ForFrisbee (Left Domain.Hostel))
-    --defaultFrisbeeDetails :: Domain.FrisbeeDetail
-    --defaultFrisbeeDetails =
-        --kDomain.FrisbeeDetail (SharedTypes.City "") (SharedTypes.Country "")  (SharedTypes.PhoneNumber "") undefined undefined
 
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
 newRegisterForm _ = checkForBot $
@@ -75,26 +69,21 @@ validateAndNormalizeEmail = DF.validate validateEmail
         in
             if atSignCount > 0 && partBeforeAtNonEmpty && partAfterAtNonEmpty
                 then DT.Success strippedEmail
-                else DT.Error "keine gültige E-Mail-Adresse"
+                else DT.Error "not a valid email address"
 
 frisbeeForm :: Monad m => DF.Formlet T.Text m Domain.FrisbeeDetail
 frisbeeForm _def =
-    buildFrisbeeDetail <$> "city" DF..: fmap SharedTypes.City (mustBePresent (DF.text Nothing))
-                       <*> "country" DF..: fmap SharedTypes.Country (mustBePresent (DF.text Nothing))
-                       <*> "phoneNumber" DF..: fmap SharedTypes.PhoneNumber (mustBePresent (DF.text Nothing))
-                       <*> "playerOrGuest" DF..: pure SharedTypes.Player -- DF.choice [(SharedTypes.Player, "Player"), (SharedTypes.Guest, "Guest")] Nothing
-                       <*> "divisionParticipation" DF..: multipleWithFreeFormField Mandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
-                       <*> "partnerOpenPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                       <*> "partnerOpenCoop" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                       <*> "partnerMixedPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                       <*> "lookingForPartner" DF..: multipleWithFreeFormField NotMandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
-                       <*> "arrival" DF..: dateFields (2019, 5, 30)
-                       <*> "departure" DF..: dateFields (2019, 6, 2)
-
-  where
-    buildFrisbeeDetail = Domain.FrisbeeDetail
-    multiple :: (Monad m, Ord a) => [(a, T.Text)] -> DF.Form T.Text m (Set.Set a)
-    multiple choices = Set.fromList <$> DF.choiceMultiple choices Nothing
+    Domain.FrisbeeDetail <$> "city" DF..: fmap SharedTypes.City (mustBePresent (DF.text Nothing))
+                         <*> "country" DF..: fmap SharedTypes.Country (mustBePresent (DF.text Nothing))
+                         <*> "phoneNumber" DF..: fmap SharedTypes.PhoneNumber (mustBePresent (DF.text Nothing))
+                         <*> pure SharedTypes.Player
+                         <*> "divisionParticipation" DF..: multipleWithFreeFormField Mandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
+                         <*> "partnerOpenPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
+                         <*> "partnerOpenCoop" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
+                         <*> "partnerMixedPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
+                         <*> "lookingForPartner" DF..: multipleWithFreeFormField NotMandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
+                         <*> "arrival" DF..: dateFields (2019, 5, 30)
+                         <*> "departure" DF..: dateFields (2019, 6, 2)
 
 data Mandatory = Mandatory | NotMandatory
 
@@ -106,13 +95,13 @@ multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel)
   where
     mandatoryOrNot =
         case mandatory of
-            Mandatory -> fmap NE.toList . mustContainAtLeastOne "muss ausgefüllt werden"
-            NotMandatory -> (\x -> x)
+            Mandatory -> fmap NE.toList . mustContainAtLeastOne "can't be blank"
+            NotMandatory -> Prelude.id
     allChoices = ((\(value, label) -> (Just value, label)) <$> choices) ++ [(Nothing, freeFormLabel)]
     foo :: (Ord a) => (T.Text -> a) -> T.Text -> [Maybe a] -> Set.Set a
     foo f text selected = Set.fromList (unwrapElement text f <$> selected)
     unwrapElement :: T.Text -> (T.Text -> a) -> (Maybe a) -> a
-    unwrapElement otherText _ (Just x) = x
+    unwrapElement _ _ (Just x) = x
     unwrapElement otherText f Nothing = f otherText
 
 
@@ -131,10 +120,10 @@ frisbeeSleepingForm = DF.choice allChoices $ Just (Left Domain.Hostel)
   where
     allChoices :: [(Either Domain.Hostel Domain.ConventionSleeping, T.Text)]
     allChoices =
-        [ (Right Domain.Gym, "Ich schlafe in der Schlafhalle")
-        , (Right Domain.Camping, "Ich schlafe im Zelt neben der Halle")
-        , (Right Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung")
-        , (Left Domain.Hostel, "Ich schlafe im Hostel")
+        [ (Right Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
+        , (Right Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
+        , (Right Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
+        , (Left Domain.Hostel, "Ich schlafe im Hostel (hostel)")
         ]
 
 sleepingForm :: Monad m => DF.Form T.Text m Domain.ConventionSleeping
@@ -142,15 +131,14 @@ sleepingForm = DF.choice allChoices $ Just Domain.Gym
   where
     allChoices :: [(Domain.ConventionSleeping, T.Text)]
     allChoices =
-        [ (Domain.Gym, "Ich schlafe in der Schlafhalle")
-        , (Domain.Camping, "Ich schlafe im Zelt neben der Halle")
-        , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung")
+        [ (Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
+        , (Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
+        , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
         ]
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
 ticketForm availableTickets = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
   where
-    -- TODO: identifier should probably not be the entire Domain.Ticket, but only the id
     ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
     ticketChoicesWithLabel = zip availableTickets $ ticketChoiceLabel <$> availableTickets
     ticketChoiceLabel Domain.Ticket{..} = Domain.stayLabel stay <> ", " <> Domain.ageLabel ageCategory <> ": " <> priceLabel price
@@ -193,7 +181,7 @@ registerForm isOverLimit =
 
 dateFields :: Monad m => (Integer, Int, Int) -> DF.Form T.Text m Day
 dateFields (year, month, day) =
-    DF.validate (maybe (DT.Error "kein gültiges Datum") DT.Success)
+    DF.validate (maybe (DT.Error "not a valid date") DT.Success)
   $ fromGregorianValid <$> "year" DF..: DF.choice years (Just year)
                        <*> "month" DF..: DF.choice months (Just month)
                        <*> "day" DF..: DF.choice days (Just day)
@@ -224,7 +212,7 @@ birthdayFields :: Monad m => DF.Form T.Text m Day
 birthdayFields = dateFields (1990, 1, 1)
 
 mustBePresent :: (Monad m) => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
-mustBePresent = DF.check "muss ausgefüllt werden" notEmpty
+mustBePresent = DF.check "can't be blank" notEmpty
   where
     notEmpty = not . T.null . T.strip
 
@@ -234,14 +222,6 @@ maybeEmpty = fmap (\t -> if T.null $ T.strip t then Nothing else Just $ T.strip 
 optionalText :: Monad m => DF.Form T.Text m (Maybe T.Text)
 optionalText =
     (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
-
-mustContainAtLeastOneSet :: Monad m => DF.Form T.Text m (Set.Set a) -> DF.Form T.Text m (Set.Set a)
-mustContainAtLeastOneSet = DF.validate notEmpty
-  where
-    notEmpty set =
-        if Set.null set
-            then DT.Error "Mindestens ein Teilnehmer muss angegeben werden."
-            else DT.Success set
 
 mustContainAtLeastOne :: Monad m => T.Text -> DF.Form T.Text m [a] -> DF.Form T.Text m (NE.NonEmpty a)
 mustContainAtLeastOne errorMessage = DF.validate nonEmptyOrList

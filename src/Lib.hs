@@ -37,7 +37,6 @@ import qualified Form
 import qualified Data.Maybe as M
 import qualified IO.Mailer as Mailer
 import Types
-import Util
 import qualified Domain.Registration as D
 import qualified Domain.Participant as P
 import qualified Domain.SharedTypes as DT
@@ -251,9 +250,10 @@ servantPathEnv body _ = pure env
     env :: (Monad m) => DF.Path -> m [DF.FormInput]
     env path = return (DF.TextInput <$> lookupParam path)
 
+data Language = German | English
 
 mailForRegistration :: D.ExistingRegistration -> Mailer.Mail
-mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, firstParticipantName)
+mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAddress, firstParticipantName)
   where
     (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
@@ -261,10 +261,12 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
     newLine = "\n\n"
     totalPrice = T.pack $ show $ D.priceToPay registration
     (DT.PaymentCode paymentReason) = D.paymentCode registration
-    optionalLinesForFrisbee =
+    frisbeeSentence English = "You are registered for the following divisions:"
+    frisbeeSentence German = "Bei den German Open Freestyle Frisbee hast du dich für folgende Disziplinen angemeldet:"
+    optionalLinesForFrisbee language =
         case NE.head $ D.participants registration of
             (P.Participant' _ _ _ (P.ForFrisbee _ details)) ->
-                [ Just "Bei der Frisbee-Meisterschaft hast du dich für folgende Disziplinen angemeldet:"
+                [ Just $ frisbeeSentence language
                 , Just ""
                 ] ++ (fmap (\d -> Just $ "* " <> DT.divisionLabel d) (Set.toList $ P.divisionParticipation details)) ++
                 [ Just "" ]
@@ -275,24 +277,49 @@ mailForRegistration registration = Mailer.Mail mailBody subject (mailAddress, fi
             (DT.Name name) = P.participantName p
         in
             "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
-    mailBody = T.intercalate newLine $ M.catMaybes
-        ([ Just $ "Liebe/r " <> firstParticipantName
-        , Just $ "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+    mailBodyComplete =
+        "(English version below)" <> newLine <> newLine <>
+        mailBody German <> newLine <> newLine <> mailBody English
+
+    mailBody language = T.intercalate newLine $ M.catMaybes
+        ([ Just $ salutation language <> " " <> firstParticipantName <> ","
+        , Just $ ""
+        , Just $ ticketText language
         , Just $ ""
         , Just $ T.intercalate newLine $ NE.toList $ fmap nameAndTicketLine (D.participants registration)
         , Just $ ""
-        , ("Außerdem hast du uns folgenden Kommentar hinterlassen: " <>) <$> D.comment registration
+        , ((commentText language <> " ") <>) <$> D.comment registration
         , Just $ ""
-        ] <> optionalLinesForFrisbee <>
-        [ Just $ "bitte überweise das Geld dafür bis zum 15.05.2019 auf unser Konto:"
-        , Just $ "Empfänger: Jonglieren in Freiburg e.V."
-        , Just $ "Bank: Sparkasse Freiburg Nördlicher Breisgau"
-        , Just $ "IBAN: DE26 6805 0101 0012 0917 91"
-        , Just $ "BIC: FRSPDE66XXX"
-        , Just $ "Betrag: " <> totalPrice
-        , Just $ "Verwendungszweck: " <> paymentReason
-        , Just $ ""
-        , Just $ "Wir freuen uns Dich auf dem Festival zu sehen."
-        , Just $ "Viele Grüße Dein"
-        , Just $ "Orgateam"
-        ])
+        ] <> optionalLinesForFrisbee language <> fmap Just (restText language))
+    ticketText German = "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+    ticketText English = "you ordered the following tickets for the Freiburg Juggling Convention:"
+    salutation German = "Liebe/r"
+    salutation English = "Dear"
+    commentText German = "Außerdem hast du uns folgenden Kommentar hinterlassen:"
+    commentText English = "You sent us the following comment:"
+    restText German =
+        [ "bitte überweise das Geld dafür bis zum 15.05.2019 auf unser Konto:"
+        , "Empfänger: Jonglieren in Freiburg e.V."
+        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , "IBAN: DE26 6805 0101 0012 0917 91"
+        , "BIC: FRSPDE66XXX"
+        , "Betrag: " <> totalPrice
+        , "Verwendungszweck: " <> paymentReason
+        , ""
+        , "Wir freuen uns Dich auf dem Festival zu sehen."
+        , "Viele Grüße Dein"
+        , "Orgateam"
+        ]
+    restText English =
+        [ "please transfer the money to our account until the 15th of May of 2019:"
+        , "Recipient : Jonglieren in Freiburg e.V."
+        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , "IBAN: DE26 6805 0101 0012 0917 91"
+        , "BIC: FRSPDE66XXX"
+        , "Amount: " <> totalPrice
+        , "Reference: " <> paymentReason
+        , ""
+        , "We're looking forward to meeting you at the festival!"
+        , "Cheers!"
+        , "Your orga team"
+        ]

@@ -77,6 +77,7 @@ type family MaybePersisted (status :: PersistedStatus) a where
     MaybePersisted 'Persisted a = a
     MaybePersisted 'New a = ()
 
+-- TODO: Should be a smart constructor
 nameEmpty :: Name -> Bool
 nameEmpty (Name t) = T.null $ T.strip t
 

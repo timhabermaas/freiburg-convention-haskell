@@ -23,12 +23,12 @@ import Data.String (IsString(fromString))
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PSQL
 import Database.PostgreSQL.Simple.FromRow
-import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.FromField (FromField, fromField, returnError)
 import Database.PostgreSQL.Simple.ToField (ToField, toField)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
 import qualified Data.List.NonEmpty as NE
+import Prelude hiding (id)
 
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.Time.Calendar (Day)
@@ -61,12 +61,6 @@ instance ToField (Either P.Hostel P.ConventionSleeping) where
     toField (Right r) = toField r
     toField (Left l) = toField l
 
-{-
-instance {-# OVERLAPPING #-} FromField (Either P.Hostel P.ConventionSleeping) where
-    fromField f bs = Left <$> fromField f bs <|> Right <$> fromField f bs
--}
-
-
 instance FromField P.Hostel where
     fromField f bs = do
         s <- fromField f bs
@@ -93,7 +87,7 @@ instance FromRow P.ExistingParticipant where
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                _ <- field :: RowParser (Maybe T.Text)
+                _ <- field :: RowParser (Maybe T.Text) -- ignoring data attribut
                 pure $ P.Participant' id_ pI ticket (P.ForJuggler sleeping)
             _ -> fail "type_ must be either frisbee or juggler"
 
@@ -134,12 +128,6 @@ instance FromField Sleepover where
             "gym" -> return GymSleeping
             _ -> fail "sleepover not of expected value"
 
-sleepoversToText :: Sleepover -> T.Text
-sleepoversToText NoNights = "none"
-sleepoversToText CouldntSelect = "n/a"
-sleepoversToText Camping = "camping"
-sleepoversToText GymSleeping = "gym"
-
 instance FromRow DbParticipant where
     fromRow = DbParticipant <$> field <*> field <*> field <*> field <*> field <*> field <*> field <*> field <*> field <*> field <*> field
 
@@ -158,20 +146,19 @@ saveRegistration' (Handle pool) R.Registration{..} =
         PSQL.withTransaction conn $ do
             t <- getCurrentTime
             [PSQL.Only registrationId] <- PSQL.query conn "INSERT INTO registrations (email, paymentCode, comment, registeredAt) VALUES (?, ?, ?, ?) RETURNING id" (email, "0" :: String, comment, t)
-            PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
+            _ <- PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
             forM_ participants $ \p -> do
                 case p of
                     P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForJuggler sleeping) ->
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "juggler" :: T.Text)
                     P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForFrisbee sleeping data') -> do
-                        putStrLn "saving frisbee"
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type, frisbeeDetails) VALUES (?, ?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "frisbee" :: T.Text, encode data')
             pure $ DT.Id registrationId
 
 getRegistration :: Handle -> DT.Id -> IO R.ExistingRegistration
-getRegistration (Handle pool) (DT.Id id) = do
+getRegistration (Handle pool) (DT.Id registrationId) = do
     Pool.withResource pool $ \conn -> do
-        [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only id)
+        [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only registrationId)
         participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants WHERE registrationId = ?" (PSQL.Only id)
         pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt
 

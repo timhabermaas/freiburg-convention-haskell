@@ -34,7 +34,7 @@ import Data.Aeson (ToJSON, FromJSON)
 import Prelude hiding (id)
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Data.Time.Calendar (Day, fromGregorian)
+import Data.Time.Calendar (Day)
 
 data PersonalInformation = PersonalInformation
   { name :: Name
@@ -65,27 +65,11 @@ data FrisbeeDetail
     , departure :: Day
     } deriving (Show, Generic)
 
-defFrisbee :: FrisbeeDetail
-defFrisbee
-    = FrisbeeDetail
-    { city = City "Hamburg"
-    , country = Country "Germany"
-    , phoneNumber = PhoneNumber "121421"
-    , playerOrGuest = Player
-    , divisionParticipation = Set.singleton MixedPairs
-    , lookingForPartner = Set.empty
-    , partnerOpenPairs = Just $ Partner "Heinz Mueller"
-    , partnerOpenCoop = Just $ Partner "Desiree Mueller"
-    , partnerMixedPairs = Nothing
-    , arrival = fromGregorian 2018 03 12
-    , departure = fromGregorian 2018 03 16
-    }
-
 instance ToJSON FrisbeeDetail
 instance FromJSON FrisbeeDetail
 
 data ParticipantDetail
-    = ForFrisbee (Either Hostel ConventionSleeping) FrisbeeDetail -- City Country PlayerOrGuest (Set.Set Division) (Set.Set Division) (Partner OpenPairs) (Partner OpenCoop) (Partner MixedPairs) Day Day
+    = ForFrisbee (Either Hostel ConventionSleeping) FrisbeeDetail
     | ForJuggler ConventionSleeping
     deriving (Show, Generic)
 
@@ -145,6 +129,7 @@ frisbeeTicketChoices =
     , Ticket (Id 12) Baby ShortStay (Price 0)
     ]
 
+allTicketChoices :: [Ticket]
 allTicketChoices = jugglerTicketChoices ++ frisbeeTicketChoices
 
 ticketFromId :: Id -> Ticket
