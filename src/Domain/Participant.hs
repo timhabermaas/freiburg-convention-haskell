@@ -7,8 +7,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Domain.Participant
-  ( ConventionSleeping(..)
-  , Hostel(..)
+  ( Accommodation(..)
   , Participant'(..)
   , ExistingParticipant
   , NewParticipant
@@ -41,8 +40,7 @@ data PersonalInformation = PersonalInformation
   , birthday :: Birthday
   } deriving Show
 
-data ConventionSleeping = Gym | Camping | SelfOrganized deriving (Show, Eq)
-data Hostel = Hostel deriving (Show, Eq)
+data Accommodation = Gym | Camping | SelfOrganized | Hostel deriving (Show, Eq)
 
 participantName :: Participant' status -> Name
 participantName (Participant' _ pI _ _) = name pI
@@ -55,7 +53,6 @@ data FrisbeeDetail
     { city :: City
     , country :: Country
     , phoneNumber :: PhoneNumber
-    , playerOrGuest :: PlayerOrGuest
     , divisionParticipation :: Set.Set Division -- Should actually be a non empty set
     , partnerOpenPairs :: Maybe (Partner 'OpenPairs)
     , partnerOpenCoop :: Maybe (Partner 'OpenCoop)
@@ -69,8 +66,8 @@ instance ToJSON FrisbeeDetail
 instance FromJSON FrisbeeDetail
 
 data ParticipantDetail
-    = ForFrisbee (Either Hostel ConventionSleeping) FrisbeeDetail
-    | ForJuggler ConventionSleeping
+    = ForFrisbee Accommodation FrisbeeDetail
+    | ForJuggler Accommodation
     deriving (Show, Generic)
 
 data Participant' status

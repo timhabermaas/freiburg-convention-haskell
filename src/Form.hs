@@ -35,11 +35,11 @@ newFrisbeeRegisterForm _ = checkForBot $
                              <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
                              <*> "birthday" DF..: birthdayFields
                              <*> "ticket" DF..: ticketForm Domain.frisbeeTicketChoices
-                             <*> "accommodation" DF..: frisbeeSleepingForm
+                             <*> "accommodation" DF..: sleepingForm (Just Domain.Hostel)
                              <*> "frisbeeParticipant" DF..: frisbeeForm Nothing
                              <*> "comment" DF..: optionalText
   where
-    buildFrisbeeRegistration :: T.Text -> T.Text -> Day -> Domain.Ticket -> (Either Domain.Hostel Domain.ConventionSleeping) -> Domain.FrisbeeDetail -> Maybe T.Text -> Domain.NewRegistration
+    buildFrisbeeRegistration :: T.Text -> T.Text -> Day -> Domain.Ticket -> (Domain.Accommodation) -> Domain.FrisbeeDetail -> Maybe T.Text -> Domain.NewRegistration
     buildFrisbeeRegistration name email birthday ticket sleeping details comment = Domain.Registration () email (NE.fromList [Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForFrisbee sleeping details)]) comment () ()
 
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
@@ -76,7 +76,6 @@ frisbeeForm _def =
     Domain.FrisbeeDetail <$> "city" DF..: fmap SharedTypes.City (mustBePresent (DF.text Nothing))
                          <*> "country" DF..: fmap SharedTypes.Country (mustBePresent (DF.text Nothing))
                          <*> "phoneNumber" DF..: fmap SharedTypes.PhoneNumber (mustBePresent (DF.text Nothing))
-                         <*> pure SharedTypes.Player
                          <*> "divisionParticipation" DF..: multipleWithFreeFormField Mandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
                          <*> "partnerOpenPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
                          <*> "partnerOpenCoop" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
@@ -110,30 +109,20 @@ participantForm _def =
     buildParticipant <$> "name" DF..: DF.text Nothing
                      <*> "birthday" DF..: birthdayFields
                      <*> "ticket" DF..: ticketForm Domain.jugglerTicketChoices
-                     <*> "accommodation" DF..: sleepingForm
+                     <*> "accommodation" DF..: sleepingForm (Just Domain.Gym)
   where
-    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.ConventionSleeping -> Domain.NewParticipant
+    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.NewParticipant
     buildParticipant name birthday ticket sleeping = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForJuggler sleeping)
 
-frisbeeSleepingForm :: Monad m => DF.Form T.Text m (Either Domain.Hostel Domain.ConventionSleeping)
-frisbeeSleepingForm = DF.choice allChoices $ Just (Left Domain.Hostel)
+sleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
+sleepingForm = DF.choice allChoices
   where
-    allChoices :: [(Either Domain.Hostel Domain.ConventionSleeping, T.Text)]
-    allChoices =
-        [ (Right Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
-        , (Right Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
-        , (Right Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
-        , (Left Domain.Hostel, "Ich schlafe im Hostel (hostel)")
-        ]
-
-sleepingForm :: Monad m => DF.Form T.Text m Domain.ConventionSleeping
-sleepingForm = DF.choice allChoices $ Just Domain.Gym
-  where
-    allChoices :: [(Domain.ConventionSleeping, T.Text)]
+    allChoices :: [(Domain.Accommodation, T.Text)]
     allChoices =
         [ (Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
         , (Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
         , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
+        , (Domain.Hostel, "Ich schlafe im Hostel (hostel)")
         ]
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket

@@ -40,34 +40,21 @@ import qualified Domain.Participant as P
 import qualified Domain.Registration as R
 import qualified Domain.SharedTypes as DT
 
-instance ToField P.ConventionSleeping where
+instance ToField P.Accommodation where
     toField P.Gym = toField ("gym" :: T.Text)
     toField P.Camping = toField ("camping" :: T.Text)
     toField P.SelfOrganized = toField ("selfOrganized" :: T.Text)
+    toField P.Hostel = toField ("hostel" :: T.Text)
 
-instance FromField P.ConventionSleeping where
+instance FromField P.Accommodation where
     fromField f bs = do
         res <- fromField f bs
         case res :: String of
             "gym" -> pure P.Gym
             "camping" -> pure P.Camping
             "selfOrganized" -> pure P.SelfOrganized
+            "hostel" -> pure P.Hostel
             other -> returnError PSQL.ConversionFailed f $ "ConventionSleeping needs to be either gym, camping or other, it is " ++ other
-
-instance ToField P.Hostel where
-    toField _ = toField ("hostel" :: T.Text)
-
-instance ToField (Either P.Hostel P.ConventionSleeping) where
-    toField (Right r) = toField r
-    toField (Left l) = toField l
-
-instance FromField P.Hostel where
-    fromField f bs = do
-        s <- fromField f bs
-        if (s :: T.Text) == "hostel" then
-            pure P.Hostel
-        else
-            returnError PSQL.ConversionFailed f "can't parse Hostel"
 
 instance FromRow P.ExistingParticipant where
     fromRow = do

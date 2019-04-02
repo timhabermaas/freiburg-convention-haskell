@@ -190,7 +190,7 @@ postRegisterFrisbeeHandler conn mailerHandle limits body = do
     case r of
         (view, Nothing) -> do
             liftIO $ print view
-            pure $ Page.registerPage view overLimit
+            pure $ Page.frisbeeRegisterPage view overLimit
         (_, Just botCheckedRegistration) -> do
             case botCheckedRegistration of
                 Form.IsBot -> do
@@ -246,7 +246,7 @@ servantPathEnv :: (Monad m) => [(T.Text, T.Text)] -> DF.FormEncType -> m (DF.Env
 servantPathEnv body _ = pure env
   where
     lookupParam :: DF.Path -> [T.Text]
-    lookupParam p = snd <$> filter (\(k, v) -> k == DF.fromPath p) body
+    lookupParam p = snd <$> filter (\(k, _) -> k == DF.fromPath p) body
     env :: (Monad m) => DF.Path -> m [DF.FormInput]
     env path = return (DF.TextInput <$> lookupParam path)
 

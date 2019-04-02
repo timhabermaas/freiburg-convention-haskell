@@ -22,7 +22,6 @@ module Domain.SharedTypes
   , City(..)
   , Country(..)
   , PhoneNumber(..)
-  , PlayerOrGuest(..)
   , Division(..)
   , Partner(..)
   , divisionLabel
@@ -41,7 +40,6 @@ newtype Name = Name T.Text deriving Show
 newtype City = City T.Text deriving (Show, Generic)
 newtype Country = Country T.Text deriving (Show, Generic)
 newtype PhoneNumber = PhoneNumber T.Text deriving (Show, Generic)
-data PlayerOrGuest = Player | Guest deriving (Show, Generic, Eq)
 data Division = OpenPairs | OpenCoop | MixedPairs | Other T.Text deriving (Show, Generic, Ord, Eq)
 newtype Partner division = Partner T.Text deriving (Show, Generic)
 
@@ -51,8 +49,6 @@ instance ToJSON City
 instance FromJSON City
 instance ToJSON PhoneNumber
 instance FromJSON PhoneNumber
-instance ToJSON PlayerOrGuest
-instance FromJSON PlayerOrGuest
 instance ToJSON Division
 instance FromJSON Division
 instance ToJSON (Partner div)
