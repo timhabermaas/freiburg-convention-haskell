@@ -279,7 +279,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
             "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
     mailBodyComplete =
         "(English version below)" <> newLine <> newLine <>
-        mailBody German <> newLine <> newLine <> mailBody English
+        mailBody German <> newLine <> newLine <> newLine <> newLine <> mailBody English
 
     mailBody language = T.intercalate newLine $ M.catMaybes
         ([ Just $ salutation language <> " " <> firstParticipantName <> ","

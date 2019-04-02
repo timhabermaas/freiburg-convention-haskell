@@ -336,7 +336,7 @@ frisbeeRegisterPage frisbeeView isOverLimit = layout $ do
             noSleepingMessage isOverLimit
             H.ul ! A.class_ "nav nav-tabs" $ do
                 H.li ! A.class_ "nav-item" $ do
-                    H.a ! A.href "/" ! A.class_ "nav-link" $ "Jonglier-Convention"
+                    H.a ! A.href "/" ! A.class_ "nav-link" $ "Juggling Convention/German Open Guests"
                 H.li ! A.class_ "nav-item" $ do
                     H.a ! A.href "/frisbeeRegistration" ! A.class_ "nav-link active" $ "German Open Freestyle Frisbee"
             H.br
