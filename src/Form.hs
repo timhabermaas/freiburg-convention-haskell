@@ -35,7 +35,7 @@ newFrisbeeRegisterForm _ = checkForBot $
                              <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
                              <*> "birthday" DF..: birthdayFields
                              <*> "ticket" DF..: ticketForm Domain.frisbeeTicketChoices
-                             <*> "accommodation" DF..: sleepingForm (Just Domain.Hostel)
+                             <*> "accommodation" DF..: frisbeeSleepingForm (Just Domain.Hostel)
                              <*> "frisbeeParticipant" DF..: frisbeeForm Nothing
                              <*> "comment" DF..: optionalText
   where
@@ -116,6 +116,16 @@ participantForm _def =
 
 sleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
 sleepingForm = DF.choice allChoices
+  where
+    allChoices :: [(Domain.Accommodation, T.Text)]
+    allChoices =
+        [ (Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
+        , (Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
+        , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
+        ]
+
+frisbeeSleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
+frisbeeSleepingForm = DF.choice allChoices
   where
     allChoices :: [(Domain.Accommodation, T.Text)]
     allChoices =
