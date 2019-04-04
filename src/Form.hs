@@ -119,10 +119,10 @@ sleepingForm = DF.choice allChoices
   where
     allChoices :: [(Domain.Accommodation, T.Text)]
     allChoices =
-        [ (Domain.Gym, "Ich schlafe in der Schlafhalle (gym)")
-        , (Domain.Camping, "Ich schlafe im Zelt neben der Halle (tent)")
+        [ (Domain.Gym, "Schlafhalle (gym)")
+        , (Domain.Camping, "Zelt neben der Halle (tent)")
         , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
-        , (Domain.Hostel, "Ich schlafe im Hostel (hostel)")
+        , (Domain.Hostel, "Hostel — nur für Gäste oder Teilnehmer der German Open (hostel, German Open only)")
         ]
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
