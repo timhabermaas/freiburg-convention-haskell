@@ -8,6 +8,7 @@ module IO.Db
     , getRegistration
     , saveRegistration'
     , deleteRegistration
+    , payRegistration
     , allRegistrations
     , allRegistrations'
     , allRegistrationsOrderedByName
@@ -145,9 +146,9 @@ saveRegistration' (Handle pool) R.Registration{..} =
 getRegistration :: Handle -> DT.Id -> IO R.ExistingRegistration
 getRegistration (Handle pool) (DT.Id registrationId) = do
     Pool.withResource pool $ \conn -> do
-        [(id, email, paymentCode, comment, registeredAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt FROM registrations WHERE id = ?" (PSQL.Only registrationId)
+        [(id, email, paymentCode, comment, registeredAt, paidAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt, paidAt FROM registrations WHERE id = ?" (PSQL.Only registrationId)
         participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants WHERE registrationId = ?" (PSQL.Only id)
-        pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt
+        pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt (DT.paidStatusFromMaybeTime paidAt)
 
 
 deleteRegistration :: Handle -> DbId Participant -> IO ()
@@ -155,6 +156,12 @@ deleteRegistration (Handle pool) (DbId id') =
     Pool.withResource pool $ \conn -> do
         void $ PSQL.execute conn "DELETE FROM registrations WHERE id = ?" (PSQL.Only id')
         void $ PSQL.execute conn "DELETE FROM participants WHERE registrationId = ?" (PSQL.Only id')
+
+payRegistration :: Handle -> DbId R.ExistingRegistration -> IO ()
+payRegistration (Handle pool) (DbId id') = do
+    t <- getCurrentTime
+    Pool.withResource pool $ \conn -> do
+        void $ PSQL.execute conn "UPDATE registrations SET paidAt = ? WHERE id = ?" (t, id')
 
 allRegistrations' :: Handle -> IO [R.ExistingRegistration]
 allRegistrations' handle@(Handle pool) = do
@@ -189,7 +196,6 @@ migrate (Handle pool) =
         , "type text NOT NULL,"
         , "ticketId int NOT NULL,"
         , "frisbeeDetails text);"
-        -- TODO: Ticket => Map (,) to two columns
 
         , "CREATE TABLE IF NOT EXISTS registrations ("
         , "id SERIAL PRIMARY KEY,"
@@ -197,4 +203,6 @@ migrate (Handle pool) =
         , "paymentCode text NOT NULL,"
         , "comment text,"
         , "registeredAt timestamptz NOT NULL);"
+
+        , "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS paidAt timestamptz;"
         ]

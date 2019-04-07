@@ -25,6 +25,8 @@ module Domain.SharedTypes
   , Division(..)
   , Partner(..)
   , divisionLabel
+  , PaidStatus(..)
+  , paidStatusFromMaybeTime
   ) where
 
 import qualified Data.Text as T
@@ -88,3 +90,9 @@ divisionLabel OpenPairs = "Open Pairs"
 divisionLabel OpenCoop = "Open Coop"
 divisionLabel MixedPairs = "Mixed Pairs"
 divisionLabel (Other t) = "Other: " <> t
+
+data PaidStatus = Paid | NotPaid deriving (Show, Eq)
+
+paidStatusFromMaybeTime :: Maybe UTCTime -> PaidStatus
+paidStatusFromMaybeTime (Just _) = Paid
+paidStatusFromMaybeTime Nothing = NotPaid

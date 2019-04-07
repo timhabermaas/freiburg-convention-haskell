@@ -87,8 +87,10 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
                         H.th "E-Mail"
                         H.th "Anzahl Teilnehmer"
                         H.th "Anmerkungen"
-                        H.th "Verwendungszweck"
                         H.th "Angemeldet am"
+                        H.th "Verwendungszweck"
+                        H.th "Summe Tickets"
+                        H.th "Bezahlt?"
                         H.th "Aktionen"
                 H.tbody $ mapM_ registrationRow registrations
     {-row $ do
@@ -99,16 +101,26 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
         -}
   where
     registrationRow :: R.ExistingRegistration -> H.Html
-    registrationRow R.Registration{..} =
+    registrationRow reg@R.Registration{..} =
         H.tr $ do
             H.td $ H.toHtml email
             H.td $ H.toHtml $ length participants
             H.td $ H.toHtml $ fromMaybe "" comment
-            H.td $ H.toHtml $ paymentCode
             H.td $ H.toHtml $ formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr" $ utcToBerlin registeredAt
+            H.td $ H.toHtml $ paymentCode
+            H.td $ H.toHtml $ show $ R.priceToPay reg
+            H.td $ if paidStatus == DT.Paid then "✓" else "✘"
             H.td $ do
-                H.form ! A.action (H.toValue $ "/registrations/" <> idToText id <> "/delete")  ! A.method "post" $ do
-                    H.input ! A.onclick (H.toValue $ "return confirm('Willst du wirklich ' + '" <> email <> "' + ' ausladen?');") ! A.class_ "btn btn-danger" ! A.type_ "submit" ! A.name "delete" ! A.value "Löschen"
+                row $ do
+                    col 6 $ do
+                        H.form ! A.action (H.toValue $ "/registrations/" <> idToText id <> "/delete")  ! A.method "post" $ do
+                            H.input ! A.onclick (H.toValue $ "return confirm('Willst du wirklich ' + '" <> email <> "' + ' ausladen?');") ! A.class_ "btn btn-danger" ! A.type_ "submit" ! A.name "delete" ! A.value "Löschen"
+                    col 6 $ do
+                        case paidStatus of
+                            DT.Paid -> mempty
+                            DT.NotPaid ->
+                                H.form ! A.action (H.toValue $ "/registrations/" <> idToText id <> "/pay")  ! A.method "post" $ do
+                                    H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Bezahlt"
     idToText (DT.Id i) = T.pack $ show i
     gym GymSleeping = "X"
     gym _ = ""

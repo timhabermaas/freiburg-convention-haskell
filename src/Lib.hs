@@ -59,6 +59,7 @@ type API
  :<|> "registrations.csv" :> BasicAuth "foo-realm" () :> Get '[CSV] BSL.ByteString
  :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "delete" :> Post '[HTML] Page.Html
  :<|> "registrations" :> BasicAuth "foo-realm" () :> "print" :> Get '[HTML] Page.Html
+ :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "pay" :> Post '[HTML] Page.Html
 
 newtype AdminPassword = AdminPassword T.Text
 
@@ -113,6 +114,7 @@ server db mailerHandle limits =
     :<|> registrationsCsvHandler db
     :<|> deleteRegistrationsHandler db
     :<|> printRegistrationsHandler db
+    :<|> payRegistrationsHandler db
 
 isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
 isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
@@ -226,6 +228,11 @@ postRegisterHandler conn mailerHandle limits body = do
 deleteRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
 deleteRegistrationsHandler conn _ (ParticipantId participantId) = do
     liftIO $ Db.deleteRegistration conn (Db.DbId participantId)
+    redirectTo "/admin"
+
+payRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
+payRegistrationsHandler conn _ (ParticipantId participantId) = do
+    liftIO $ Db.payRegistration conn (Db.DbId participantId)
     redirectTo "/admin"
 
 printRegistrationsHandler :: Db.Handle -> () -> Handler Page.Html

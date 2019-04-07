@@ -40,7 +40,7 @@ newFrisbeeRegisterForm _ = checkForBot $
                              <*> "comment" DF..: optionalText
   where
     buildFrisbeeRegistration :: T.Text -> T.Text -> Day -> Domain.Ticket -> (Domain.Accommodation) -> Domain.FrisbeeDetail -> Maybe T.Text -> Domain.NewRegistration
-    buildFrisbeeRegistration name email birthday ticket sleeping details comment = Domain.Registration () email (NE.fromList [Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForFrisbee sleeping details)]) comment () ()
+    buildFrisbeeRegistration name email birthday ticket sleeping details comment = Domain.Registration () email (NE.fromList [Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForFrisbee sleeping details)]) comment () () ()
 
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
 newRegisterForm _ = checkForBot $
@@ -48,6 +48,7 @@ newRegisterForm _ = checkForBot $
                         <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
                         <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (fmap (filter (not . participantIsEmpty)) $ DF.listOf participantForm (Just $ replicate 5 defaultParticipant))
                         <*> "comment" DF..: optionalText
+                        <*> pure ()
                         <*> pure ()
                         <*> pure ()
   where

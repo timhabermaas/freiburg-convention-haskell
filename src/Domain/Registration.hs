@@ -25,6 +25,7 @@ data Registration' persistedStatus
   , comment :: Maybe T.Text
   , paymentCode :: MaybePersisted persistedStatus PaymentCode
   , registeredAt :: MaybePersisted persistedStatus UTCTime
+  , paidStatus :: MaybePersisted persistedStatus PaidStatus
   }
 
 type NewRegistration = Registration' 'New
@@ -32,4 +33,4 @@ type ExistingRegistration = Registration' 'Persisted
 deriving instance Show NewRegistration
 
 priceToPay :: Registration' p -> Price
-priceToPay (Registration _ _ ps _ _ _) = foldl' (+) 0 $ (P.price . P.participantTicket) <$> ps
+priceToPay (Registration _ _ ps _ _ _ _) = foldl' (+) 0 $ (P.price . P.participantTicket) <$> ps
