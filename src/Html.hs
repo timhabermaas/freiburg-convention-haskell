@@ -9,6 +9,7 @@ module Html
     , registrationListPage
     , registrationListPage'
     , registrationPrintPage
+    , participationListPage
     , Html
     ) where
 
@@ -24,11 +25,13 @@ import Data.Time.Format (formatTime, defaultTimeLocale)
 import Data.Time.LocalTime (utcToZonedTime, hoursToTimeZone, ZonedTime)
 import Data.Maybe (catMaybes, fromMaybe)
 import Prelude hiding (id)
+import Data.Coerce (coerce)
 
 import qualified IO.Db as Db
 import Types
 import Util
 import qualified Domain.Registration as R
+import qualified Domain.Participant as P
 import qualified Domain.SharedTypes as DT
 
 type Html = H.Html
@@ -51,12 +54,61 @@ layout inner = do
                 H.div ! A.class_ "mb-3" $ mempty
                 inner
 
+instance H.ToMarkup DT.Name where
+    toMarkup (DT.Name x) = H.toMarkup x
+
+participationListPage :: [P.ExistingParticipant] -> H.Html
+participationListPage participants = layout $ do
+    row $ do
+        col 12 $ do
+            H.h1 "Teilnehmer"
+    row $ do
+        col 12 $ do
+            H.ul ! A.class_ "nav nav-pills" $ do
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link" ! A.href "/admin" $ "Anmeldungen"
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link active" ! A.href "/admin/participants" $ "Teilnehmer"
+    row $ do
+        col 12 $ do
+            H.div ! A.class_ "alert alert-primary" $ do
+                H.ul $ do
+                    H.li $ do
+                        H.strong $ H.toHtml $ length participants
+                        " Teilnehmer"
+
+    row $ do
+        col 12 $ do
+            H.table ! A.class_ "table" $ do
+                H.thead $ do
+                    H.tr $ do
+                        H.th "Name"
+                        H.th "Geburtsdatum"
+                        H.th "Ticket"
+                        H.th "Kommentar"
+                H.tbody $ mapM_ participantRow participants
+  where
+    participantRow :: P.ExistingParticipant -> H.Html
+    participantRow p@(P.Participant' _ _ _ _) = do
+        H.tr $ do
+            H.td $ H.toHtml $ P.participantName p
+            H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
+            H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+            H.td "TODO"
+
 registrationListPage' :: [R.ExistingRegistration] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
 registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit) = layout $ do
     let sleepovers = [] -- fmap Db.dbParticipantSleepovers registrations
     row $ do
         col 12 $ do
             H.h1 "Anmeldungen"
+    row $ do
+        col 12 $ do
+            H.ul ! A.class_ "nav nav-pills" $ do
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link active" ! A.href "/admin" $ "Anmeldungen"
+                H.li ! A.class_ "nav-item" $ do
+                    H.a ! A.class_ "nav-link" ! A.href "/admin/participants" $ "Teilnehmer"
     row $ do
         col 12 $ do
             H.div ! A.class_ "alert alert-primary" $ do
@@ -122,10 +174,6 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
                                 H.form ! A.action (H.toValue $ "/registrations/" <> idToText id <> "/pay")  ! A.method "post" $ do
                                     H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value "Bezahlt"
     idToText (DT.Id i) = T.pack $ show i
-    gym GymSleeping = "X"
-    gym _ = ""
-    tent Camping = "X"
-    tent _ = ""
 
 registrationListPage :: [Db.DbParticipant] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
 registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit) = layout $ do

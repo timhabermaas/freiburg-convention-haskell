@@ -1,4 +1,5 @@
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -13,8 +14,10 @@ module Domain.Participant
   , NewParticipant
   , PersonalInformation(..)
   , participantName
+  , participantBirthday
   , participantTicket
   , Ticket(..)
+  , ticketLabel
   , defaultTicket
   , Stay(..)
   , AgeCategory(..)
@@ -25,6 +28,8 @@ module Domain.Participant
   , stayLabel
   , ParticipantDetail(..)
   , FrisbeeDetail(..)
+  , isJuggler
+  , isFrisbee
   ) where
 
 import Domain.SharedTypes
@@ -44,6 +49,9 @@ data Accommodation = Gym | Camping | SelfOrganized | Hostel deriving (Show, Eq)
 
 participantName :: Participant' status -> Name
 participantName (Participant' _ pI _ _) = name pI
+
+participantBirthday :: Participant' status -> Birthday
+participantBirthday (Participant' _ pI _ _) = birthday pI
 
 participantTicket :: Participant' status -> Ticket
 participantTicket (Participant' _ _ t _) = t
@@ -88,6 +96,11 @@ data AgeCategory = Baby | Child | OlderThan12 deriving (Show, Eq)
 
 data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Price } deriving Show
 
+ticketLabel :: Ticket -> T.Text
+ticketLabel Ticket{..} = stayLabel stay <> ", " <> ageLabel ageCategory <> ": " <> priceLabel price
+  where
+    priceLabel price_ = T.pack $ show price_
+
 ageLabel :: AgeCategory -> T.Text
 ageLabel Baby = "0–3 Jahre"
 ageLabel Child = "4–12 Jahre"
@@ -131,3 +144,11 @@ allTicketChoices = jugglerTicketChoices ++ frisbeeTicketChoices
 
 ticketFromId :: Id -> Ticket
 ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') allTicketChoices
+
+isJuggler :: Participant' s -> Bool
+isJuggler (Participant' _ _ _ (ForJuggler _)) = True
+isJuggler _ = False
+
+isFrisbee :: Participant' s -> Bool
+isFrisbee (Participant' _ _ _ (ForFrisbee _ _)) = True
+isFrisbee _ = False

@@ -60,6 +60,7 @@ type API
  :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "delete" :> Post '[HTML] Page.Html
  :<|> "registrations" :> BasicAuth "foo-realm" () :> "print" :> Get '[HTML] Page.Html
  :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "pay" :> Post '[HTML] Page.Html
+ :<|> "admin" :> "participants" :> BasicAuth "foo-realm" () :> Get '[HTML] Page.Html
 
 newtype AdminPassword = AdminPassword T.Text
 
@@ -115,6 +116,7 @@ server db mailerHandle limits =
     :<|> deleteRegistrationsHandler db
     :<|> printRegistrationsHandler db
     :<|> payRegistrationsHandler db
+    :<|> listParticipantsHandler db
 
 isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
 isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
@@ -239,6 +241,11 @@ printRegistrationsHandler :: Db.Handle -> () -> Handler Page.Html
 printRegistrationsHandler conn _ = do
     regs <- liftIO $ Db.allRegistrationsOrderedByName conn
     pure $ Page.registrationPrintPage regs
+
+listParticipantsHandler :: Db.Handle -> () -> Handler Page.Html
+listParticipantsHandler  conn _ = do
+    jugglers <- liftIO $ Db.allParticipants conn
+    pure $ Page.participationListPage jugglers
 
 
 successHandler :: Handler Page.Html

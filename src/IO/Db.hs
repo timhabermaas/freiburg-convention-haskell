@@ -9,6 +9,8 @@ module IO.Db
     , saveRegistration'
     , deleteRegistration
     , payRegistration
+    , allJugglers
+    , allParticipants
     , allRegistrations
     , allRegistrations'
     , allRegistrationsOrderedByName
@@ -162,6 +164,16 @@ payRegistration (Handle pool) (DbId id') = do
     t <- getCurrentTime
     Pool.withResource pool $ \conn -> do
         void $ PSQL.execute conn "UPDATE registrations SET paidAt = ? WHERE id = ?" (t, id')
+
+allParticipants :: Handle -> IO [P.ExistingParticipant]
+allParticipants (Handle pool) =
+    Pool.withResource pool $ \conn -> do
+        PSQL.query_ conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants"
+
+allJugglers :: Handle -> IO [P.ExistingParticipant]
+allJugglers handle = do
+    all' <- allParticipants handle
+    pure $ filter P.isJuggler all'
 
 allRegistrations' :: Handle -> IO [R.ExistingRegistration]
 allRegistrations' handle@(Handle pool) = do

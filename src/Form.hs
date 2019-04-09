@@ -130,9 +130,7 @@ ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
 ticketForm availableTickets = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
   where
     ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
-    ticketChoicesWithLabel = zip availableTickets $ ticketChoiceLabel <$> availableTickets
-    ticketChoiceLabel Domain.Ticket{..} = Domain.stayLabel stay <> ", " <> Domain.ageLabel ageCategory <> ": " <> priceLabel price
-    priceLabel price = T.pack $ show price
+    ticketChoicesWithLabel = zip availableTickets $ Domain.ticketLabel <$> availableTickets
 
 -- TODO: This might benefit from using Selective Functors. We want to make a decision based on the BotStatus
 {-
