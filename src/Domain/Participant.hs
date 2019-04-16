@@ -132,11 +132,6 @@ jugglerTicketChoices =
 frisbeeTicketChoices :: [Ticket]
 frisbeeTicketChoices =
     [ Ticket (Id 7) OlderThan12 LongStay (Price 44)
-    , Ticket (Id 8) Child LongStay (Price 25)
-    , Ticket (Id 9) Baby LongStay (Price 0)
-    , Ticket (Id 10) OlderThan12 ShortStay (Price 35)
-    , Ticket (Id 11) Child ShortStay (Price 20)
-    , Ticket (Id 12) Baby ShortStay (Price 0)
     ]
 
 allTicketChoices :: [Ticket]
