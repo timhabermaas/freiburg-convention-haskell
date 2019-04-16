@@ -3,11 +3,13 @@
 {-# LANGUAGE TypeOperators     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Lib
     ( startApp
     , app
     , AdminPassword(..)
+    , FrisbeePassword(..)
     , Config(..)
     ) where
 
@@ -30,6 +32,8 @@ import qualified Text.Digestive.Types as DF
 import qualified Text.Digestive.View as DF
 import qualified Data.Csv as Csv
 import qualified Data.Vector as V
+import Data.Time.Calendar (Day)
+import qualified Data.Time.Format as TimeFormat
 
 import qualified IO.Db as Db
 import qualified Html as Page
@@ -55,50 +59,55 @@ type API
  :<|> "register" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "registerFrisbee" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "success" :> Get '[HTML] Page.Html
- :<|> "admin" :> BasicAuth "foo-realm" () :> Get '[HTML] Page.Html
- :<|> "registrations.csv" :> BasicAuth "foo-realm" () :> Get '[CSV] BSL.ByteString
- :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "delete" :> Post '[HTML] Page.Html
- :<|> "registrations" :> BasicAuth "foo-realm" () :> "print" :> Get '[HTML] Page.Html
- :<|> "registrations" :> BasicAuth "foo-realm" () :> Capture "participantId" ParticipantId :> "pay" :> Post '[HTML] Page.Html
- :<|> "admin" :> "participants" :> BasicAuth "foo-realm" () :> Get '[HTML] Page.Html
+ :<|> "admin" :> BasicAuth "foo-realm" User :> Get '[HTML] Page.Html
+ :<|> "registrations.csv" :> BasicAuth "foo-realm" User :> Get '[CSV] BSL.ByteString
+ :<|> "frisbeeParticipants.csv" :> BasicAuth "frisbee-auth" User :> Get '[CSV] BSL.ByteString
+ :<|> "registrations" :> BasicAuth "foo-realm" User :> Capture "participantId" ParticipantId :> "delete" :> Post '[HTML] Page.Html
+ :<|> "registrations" :> BasicAuth "foo-realm" User :> "print" :> Get '[HTML] Page.Html
+ :<|> "registrations" :> BasicAuth "foo-realm" User :> Capture "participantId" ParticipantId :> "pay" :> Post '[HTML] Page.Html
+ :<|> "admin" :> "participants" :> BasicAuth "foo-realm" User :> Get '[HTML] Page.Html
 
 newtype AdminPassword = AdminPassword T.Text
+newtype FrisbeePassword = FrisbeePassword T.Text
 
 data Config = Config
     { configMailerHandle :: Mailer.Handle
     , configDbHandle :: Db.Handle
     , configAdminPassword :: AdminPassword
+    , configFrisbeePassword :: FrisbeePassword
     , configSleepingLimits :: (GymSleepingLimit, CampingSleepingLimit)
     }
 
-startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe String -> IO ()
-startApp dbUrl port participationLimit campingLimit pw maybeSendGridApiKey = do
+startApp :: String -> Int -> Int -> Int -> AdminPassword -> FrisbeePassword -> Maybe String -> IO ()
+startApp dbUrl port participationLimit campingLimit pw pwFrisbee maybeSendGridApiKey = do
     let mailerConfig = maybe Mailer.PrinterConfig Mailer.SendGridConfig maybeSendGridApiKey
     Mailer.withConfig mailerConfig $ \mailHandle -> do
         Db.withConfig dbUrl $ \db -> do
             Db.migrate db
-            let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
+            let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configFrisbeePassword = pwFrisbee, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
             runSettings (setOnException exceptionHandler $ setPort port defaultSettings) $ logStdoutDev $ app config
   where
     exceptionHandler _ ex = putStrLn $ show ex
 
-authCheck :: AdminPassword -> BasicAuthCheck ()
-authCheck (AdminPassword pw) =
+data User = Admin | FrisbeeMaster
+
+authCheck :: AdminPassword -> FrisbeePassword -> BasicAuthCheck User
+authCheck (AdminPassword pw) (FrisbeePassword pwFrisbee) =
     let check (BasicAuthData username password) =
             if username == "admin" && password == TE.encodeUtf8 pw
-            then pure (Authorized ())
-            else pure Unauthorized
+            then pure (Authorized Admin)
+            else (if username == "sascha" && password == TE.encodeUtf8 pwFrisbee then pure (Authorized FrisbeeMaster) else pure Unauthorized)
     in
         BasicAuthCheck check
 
-authServerContext :: AdminPassword -> Context (BasicAuthCheck () ': '[])
-authServerContext pw = (authCheck pw) :. EmptyContext
+authServerContext :: AdminPassword -> FrisbeePassword -> Context (BasicAuthCheck User ': '[])
+authServerContext pw pwFrisbee = (authCheck pw pwFrisbee) :. EmptyContext
 
 app :: Config -> Application
 app Config{..} =
     serveWithContext
         api
-        (authServerContext configAdminPassword)
+        (authServerContext configAdminPassword configFrisbeePassword)
         (server configDbHandle configMailerHandle configSleepingLimits)
 
 api :: Proxy API
@@ -113,6 +122,7 @@ server db mailerHandle limits =
     :<|> successHandler
     :<|> registrationsHandler db limits
     :<|> registrationsCsvHandler db
+    :<|> frisbeeParticipantsCsvHandler db
     :<|> deleteRegistrationsHandler db
     :<|> printRegistrationsHandler db
     :<|> payRegistrationsHandler db
@@ -147,8 +157,9 @@ frisbeeRegisterHandler conn limits = do
     viewFrisbee <- DF.getForm "FrisbeeRegistration" $ Form.newFrisbeeRegisterForm overLimit
     pure $ Page.frisbeeRegisterPage viewFrisbee overLimit
 
-registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> () -> Handler Page.Html
-registrationsHandler conn limits _ = do
+registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> User -> Handler Page.Html
+registrationsHandler conn limits user = do
+    requireAdmin user
     registrations <- liftIO $ Db.allRegistrations' conn
     pure $ Page.registrationListPage' registrations limits
 
@@ -181,11 +192,73 @@ instance Csv.ToNamedRecord CsvParticipant where
             GymSleeping -> "Klassenzimmer"
             CouldntSelect -> "Keine Auswahl"
 
-registrationsCsvHandler :: Db.Handle -> () -> Handler BSL.ByteString
-registrationsCsvHandler conn _ = do
+registrationsCsvHandler :: Db.Handle -> User -> Handler BSL.ByteString
+registrationsCsvHandler conn user = do
+    requireAdmin user
     registrations <- liftIO $ Db.allRegistrations conn
     let headers = fixEncoding <$> V.fromList [ "Name", "Adresse", "Land", "Übernachtung", "Anmerkung" ]
     pure $ Csv.encodeByName headers $ fmap CsvParticipant registrations
+
+newtype CsvFrisbeeParticipant = CsvFrisbeeParticipant D.ExistingRegistration
+
+instance Csv.ToField DT.Name where
+    toField (DT.Name s) = Csv.toField s
+
+instance Csv.ToField DT.City where
+    toField (DT.City s) = Csv.toField s
+
+instance Csv.ToField DT.Country where
+    toField (DT.Country s) = Csv.toField s
+
+instance Csv.ToField DT.PhoneNumber where
+    toField (DT.PhoneNumber s) = Csv.toField s
+
+instance Csv.ToField (DT.Partner 'DT.OpenPairs) where
+    toField (DT.Partner s) = Csv.toField s
+
+instance Csv.ToField (DT.Partner 'DT.OpenCoop) where
+    toField (DT.Partner s) = Csv.toField s
+
+instance Csv.ToField (DT.Partner 'DT.MixedPairs) where
+    toField (DT.Partner s) = Csv.toField s
+
+instance Csv.ToField P.Accommodation where
+    toField a = Csv.toField $ show a
+
+iso8601 :: Day -> String
+iso8601 d = TimeFormat.formatTime TimeFormat.defaultTimeLocale (TimeFormat.iso8601DateFormat Nothing) d
+
+representDivisions :: Set.Set DT.Division -> T.Text
+representDivisions divisions = (T.intercalate "," $ DT.divisionLabel <$> Set.toList divisions)
+
+instance Csv.ToNamedRecord CsvFrisbeeParticipant where
+    toNamedRecord (CsvFrisbeeParticipant D.Registration{..}) =
+        Csv.namedRecord
+            [ "Name" Csv..= P.participantName firstParticipant
+            , "E-Mail" Csv..= email
+            , "Stadt" Csv..= P.city frisbeeDetail
+            , "Land" Csv..= P.country frisbeeDetail
+            , "Telefonnummer" Csv..= P.phoneNumber frisbeeDetail
+            , "Division" Csv..= representDivisions (P.divisionParticipation frisbeeDetail)
+            , "Partner Open Pairs" Csv..= P.partnerOpenPairs frisbeeDetail
+            , "Partner Open Coop" Csv..= P.partnerOpenCoop frisbeeDetail
+            , "Partner Mixed Pairs" Csv..= P.partnerMixedPairs frisbeeDetail
+            , "Looking for Partner" Csv..= representDivisions (P.lookingForPartner frisbeeDetail)
+            , "Ankunft" Csv..= (iso8601 $ P.arrival frisbeeDetail) -- TODO: time 1.9 added iso8601 formats, but it conflicts with other versions
+            , "Abreise" Csv..= (iso8601 $ P.departure frisbeeDetail)
+            , (fixEncoding "Übernachtung") Csv..= accommodation
+            , "Anmerkung" Csv..= comment
+            ]
+      where
+        firstParticipant = NE.head participants
+        frisbeeDetail = let (P.Participant' _ _ _ (P.ForFrisbee _ details)) = firstParticipant in details
+        accommodation = let (P.Participant' _ _ _ (P.ForFrisbee acc _)) = firstParticipant in acc
+
+frisbeeParticipantsCsvHandler :: Db.Handle -> User -> Handler BSL.ByteString
+frisbeeParticipantsCsvHandler conn _ = do
+    registrations <- liftIO $ Db.allFrisbeeRegistrations conn
+    let headers = fixEncoding <$> V.fromList [ "Name", "E-Mail", "Stadt", "Land", "Telefonnummer", "Division", "Partner Open Pairs", "Partner Open Coop", "Partner Mixed Pairs", "Looking for Partner", "Ankunft", "Abreise", "Übernachtung", "Anmerkung"]
+    pure $ Csv.encodeByName headers $ fmap CsvFrisbeeParticipant registrations
 
 postRegisterFrisbeeHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
 postRegisterFrisbeeHandler conn mailerHandle limits body = do
@@ -227,23 +300,27 @@ postRegisterHandler conn mailerHandle limits body = do
                     liftIO $ forkIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
                     redirectTo "/success"
 
-deleteRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
-deleteRegistrationsHandler conn _ (ParticipantId participantId) = do
+deleteRegistrationsHandler :: Db.Handle -> User -> ParticipantId -> Handler Page.Html
+deleteRegistrationsHandler conn user (ParticipantId participantId) = do
+    requireAdmin user
     liftIO $ Db.deleteRegistration conn (Db.DbId participantId)
     redirectTo "/admin"
 
-payRegistrationsHandler :: Db.Handle -> () -> ParticipantId -> Handler Page.Html
-payRegistrationsHandler conn _ (ParticipantId participantId) = do
+payRegistrationsHandler :: Db.Handle -> User -> ParticipantId -> Handler Page.Html
+payRegistrationsHandler conn user (ParticipantId participantId) = do
+    requireAdmin user
     liftIO $ Db.payRegistration conn (Db.DbId participantId)
     redirectTo "/admin"
 
-printRegistrationsHandler :: Db.Handle -> () -> Handler Page.Html
-printRegistrationsHandler conn _ = do
+printRegistrationsHandler :: Db.Handle -> User -> Handler Page.Html
+printRegistrationsHandler conn user = do
+    requireAdmin user
     regs <- liftIO $ Db.allRegistrationsOrderedByName conn
     pure $ Page.registrationPrintPage regs
 
-listParticipantsHandler :: Db.Handle -> () -> Handler Page.Html
-listParticipantsHandler  conn _ = do
+listParticipantsHandler :: Db.Handle -> User -> Handler Page.Html
+listParticipantsHandler  conn user = do
+    requireAdmin user
     jugglers <- liftIO $ Db.allParticipants conn
     pure $ Page.participationListPage jugglers
 
@@ -337,3 +414,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
         , "Cheers!"
         , "Your orga team"
         ]
+
+requireAdmin :: User -> Handler ()
+requireAdmin Admin = pure ()
+requireAdmin _ = throwError err401

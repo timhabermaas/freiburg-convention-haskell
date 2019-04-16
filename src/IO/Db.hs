@@ -10,8 +10,10 @@ module IO.Db
     , deleteRegistration
     , payRegistration
     , allJugglers
+    , allFrisbees
     , allParticipants
     , allRegistrations
+    , allFrisbeeRegistrations
     , allRegistrations'
     , allRegistrationsOrderedByName
     , DbParticipant(..)
@@ -175,11 +177,19 @@ allJugglers handle = do
     all' <- allParticipants handle
     pure $ filter P.isJuggler all'
 
+allFrisbees :: Handle -> IO [P.ExistingParticipant]
+allFrisbees handle = do
+    all' <- allParticipants handle
+    pure $ filter P.isFrisbee all'
+
 allRegistrations' :: Handle -> IO [R.ExistingRegistration]
 allRegistrations' handle@(Handle pool) = do
     Pool.withResource pool $ \conn -> do
-        registrationIds <- PSQL.query_ conn "SELECT id FROM registrations"
+        registrationIds <- PSQL.query_ conn "SELECT id FROM registrations ORDER BY registeredAt DESC"
         mapM (getRegistration handle) ((\(PSQL.Only id) -> DT.Id id) <$> registrationIds)
+
+allFrisbeeRegistrations :: Handle -> IO [R.ExistingRegistration]
+allFrisbeeRegistrations conn = fmap (filter (\(R.Registration _ _ ps _ _ _ _) -> P.isFrisbee (NE.head ps))) (allRegistrations' conn)
 
 
 allRegistrations :: Handle -> IO [DbParticipant]

@@ -41,6 +41,7 @@ library
                      , digestive-functors-blaze
                      , http-api-data
                      , http-media
+                     , iso8601-time
                      , pandoc
                      , mtl
                      , postgresql-simple
