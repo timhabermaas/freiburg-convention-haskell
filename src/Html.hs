@@ -9,6 +9,7 @@ module Html
     , registrationListPage
     , registrationListPage'
     , registrationPrintPage
+    , participationPrintPage
     , participationListPage
     , Html
     ) where
@@ -62,7 +63,7 @@ participationListPage participants = layout $ do
     row $ do
         col 12 $ do
             H.h1 "Teilnehmer"
-    row $ do
+    rowWithSpace $ do
         col 12 $ do
             H.ul ! A.class_ "nav nav-pills" $ do
                 H.li ! A.class_ "nav-item" $ do
@@ -102,7 +103,7 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
     row $ do
         col 12 $ do
             H.h1 "Anmeldungen"
-    row $ do
+    rowWithSpace $ do
         col 12 $ do
             H.ul ! A.class_ "nav nav-pills" $ do
                 H.li ! A.class_ "nav-item" $ do
@@ -130,6 +131,9 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
                     H.li $ do
                         H.strong $ H.toHtml $ length registrations
                         " Anmeldungen"
+    rowWithSpace $ do
+        col 12 $ do
+            H.a ! A.href "/admin/registrations.csv" $ "CSV-Export"
 
     row $ do
         col 12 $ do
@@ -562,6 +566,52 @@ bootstrapRadios ref view =
     in
         mapM_ radio options
 
+participationPrintPage :: [P.ExistingParticipant] -> H.Html
+participationPrintPage participants = layout $ do
+    row $ do
+        col 12 $ do
+            H.div ! A.class_ "fixed-header" $ do
+                H.h1 ! A.class_ "text-center" $ "Schülerliste"
+    row $ do
+        col 12 $ do
+            H.table ! A.class_ "table table-bordered table-sm" $ do
+                H.thead $ do
+                    H.tr $ do
+                        H.th ! A.colspan "10" $ "Mit meiner Unterschrift nehme ich zur Kenntnis, dass die Veranstalter des 15. Pfälzer Jongliertreffens (12. - 14.10.2018) keine Haftung für Diebstahl, Sach- oder Personenschäden übernehmen können."
+                    H.tr $ do
+                        H.th ""
+                        H.th "Name"
+                        H.th "Geburtsdatum"
+                        H.th "Wo?"
+                        H.th "Ticket"
+                        H.th "Unterschrift"
+                H.tbody $ do
+                    mapM_ participantRow (zip [(1 :: Int)..] participants)
+                    mapM_ emptyRow [(length participants + 1)..(length participants + 150)]
+
+  where
+    rowWithMinHeight inner = H.tr ! A.style "line-height: 35px" $ inner
+    numberColumn n = H.td ! A.class_ "text-right" $ H.toHtml $ show n
+    emptyRow n =
+        rowWithMinHeight $ do
+            numberColumn n
+            H.td mempty
+            H.td mempty
+            H.td mempty
+            H.td mempty
+            H.td mempty
+    participantRow (n, p) =
+        rowWithMinHeight $ do
+            numberColumn n
+            H.td $ H.toHtml $ P.participantName p
+            H.td ! A.style "width: 100px" $ H.toHtml $ formatBirthday $ P.participantBirthday p
+            H.td ! A.class_ "text-center" ! A.style "width: 40px" $ sleepOverShort $ P.participantAccommodation p
+            H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+            H.td $ mempty
+    sleepOverShort P.Camping = "C"
+    sleepOverShort P.SelfOrganized = ""
+    sleepOverShort P.Hostel = "H"
+    sleepOverShort P.Gym = "G"
 registrationPrintPage :: [Db.DbParticipant] -> H.Html
 registrationPrintPage participants = layout $ do
     row $ do
@@ -622,6 +672,9 @@ registrationPrintPage participants = layout $ do
 
 row :: Html -> Html
 row inner = H.div ! A.class_ "row" $ inner
+
+rowWithSpace :: Html -> Html
+rowWithSpace inner = H.div ! A.class_ "row mb-2" $ inner
 
 col :: Int -> Html -> Html
 col columns inner =

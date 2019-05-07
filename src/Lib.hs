@@ -33,6 +33,7 @@ import qualified Text.Digestive.View as DF
 import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 import Data.Time.Calendar (Day)
+import Data.Time.Clock (UTCTime)
 import qualified Data.Time.Format as TimeFormat
 
 import qualified IO.Db as Db
@@ -60,12 +61,13 @@ type API
  :<|> "registerFrisbee" :> ReqBody '[FormUrlEncoded] [(T.Text, T.Text)] :> Post '[HTML] Page.Html
  :<|> "success" :> Get '[HTML] Page.Html
  :<|> "admin" :> BasicAuth "foo-realm" User :> Get '[HTML] Page.Html
- :<|> "registrations.csv" :> BasicAuth "foo-realm" User :> Get '[CSV] BSL.ByteString
+ :<|> "admin" :> "registrations.csv" :> BasicAuth "foo-realm" User :> Get '[CSV] BSL.ByteString
  :<|> "frisbeeParticipants.csv" :> BasicAuth "frisbee-auth" User :> Get '[CSV] BSL.ByteString
  :<|> "registrations" :> BasicAuth "foo-realm" User :> Capture "participantId" ParticipantId :> "delete" :> Post '[HTML] Page.Html
- :<|> "registrations" :> BasicAuth "foo-realm" User :> "print" :> Get '[HTML] Page.Html
+ -- :<|> "registrations" :> BasicAuth "foo-realm" User :> "print" :> Get '[HTML] Page.Html
  :<|> "registrations" :> BasicAuth "foo-realm" User :> Capture "participantId" ParticipantId :> "pay" :> Post '[HTML] Page.Html
  :<|> "admin" :> "participants" :> BasicAuth "foo-realm" User :> Get '[HTML] Page.Html
+ :<|> "admin" :> "participants" :> "print" :> BasicAuth "foo-realm" User :> Get '[HTML] Page.Html
 
 newtype AdminPassword = AdminPassword T.Text
 newtype FrisbeePassword = FrisbeePassword T.Text
@@ -124,9 +126,9 @@ server db mailerHandle limits =
     :<|> registrationsCsvHandler db
     :<|> frisbeeParticipantsCsvHandler db
     :<|> deleteRegistrationsHandler db
-    :<|> printRegistrationsHandler db
     :<|> payRegistrationsHandler db
     :<|> listParticipantsHandler db
+    :<|> printParticipantsHandler db
 
 isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
 isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
@@ -166,7 +168,7 @@ registrationsHandler conn limits user = do
 
 -- Using newtype wrapper for Participant because the canonical CSV decoder/encoder for the
 -- database row isn't exactly what we want.
-newtype CsvParticipant = CsvParticipant Db.DbParticipant
+newtype CsvRegistration = CsvRegistration D.ExistingRegistration
 
 -- The IsString instance of ByteString is not using the source encoding (in this case UTF8),
 -- but Char8.pack to convert String to ByteString:
@@ -175,29 +177,25 @@ newtype CsvParticipant = CsvParticipant Db.DbParticipant
 fixEncoding :: T.Text -> BS.ByteString
 fixEncoding = TE.encodeUtf8
 
-instance Csv.ToNamedRecord CsvParticipant where
-    toNamedRecord (CsvParticipant Db.DbParticipant{..}) =
+instance Csv.ToNamedRecord CsvRegistration where
+    toNamedRecord (CsvRegistration r@D.Registration{..}) =
         Csv.namedRecord
-            [ "Name" Csv..= dbParticipantName
-            , "Adresse" Csv..= TE.encodeUtf8 address
-            , "Land" Csv..= TE.encodeUtf8 dbParticipantCountry
-            , fixEncoding "Übernachtung" Csv..= sleeping dbParticipantSleepovers
-            , "Anmerkung" Csv..= (TE.encodeUtf8 <$> dbParticipantComment)
+            [ "E-Mail" Csv..= email
+            , "Verwendungszweck" Csv..= codeToText paymentCode
+            , "Summe Tickets" Csv..= (show $ D.priceToPay r)
+            , "Anzahl Teilnehmer" Csv..= (show $ length participants)
+            , "Anmerkung" Csv..= comment
+            , "Angemeldet am" Csv..= iso8601 registeredAt
             ]
       where
-        address = (dbParticipantStreet <> ", " <> dbParticipantPostalCode <> " " <> dbParticipantCity) :: T.Text
-        sleeping s = case s of
-            NoNights -> "Keine Übernachtung" :: T.Text
-            Camping -> "Zelt"
-            GymSleeping -> "Klassenzimmer"
-            CouldntSelect -> "Keine Auswahl"
+        codeToText (DT.PaymentCode f) = f
 
 registrationsCsvHandler :: Db.Handle -> User -> Handler BSL.ByteString
 registrationsCsvHandler conn user = do
     requireAdmin user
-    registrations <- liftIO $ Db.allRegistrations conn
-    let headers = fixEncoding <$> V.fromList [ "Name", "Adresse", "Land", "Übernachtung", "Anmerkung" ]
-    pure $ Csv.encodeByName headers $ fmap CsvParticipant registrations
+    registrations <- liftIO $ Db.allRegistrations' conn
+    let headers = fixEncoding <$> V.fromList [ "E-Mail", "Verwendungszweck", "Summe Tickets", "Anzahl Teilnehmer", "Anmerkung", "Angemeldet am" ]
+    pure $ Csv.encodeByName headers $ fmap CsvRegistration registrations
 
 newtype CsvFrisbeeParticipant = CsvFrisbeeParticipant D.ExistingRegistration
 
@@ -225,8 +223,11 @@ instance Csv.ToField (DT.Partner 'DT.MixedPairs) where
 instance Csv.ToField P.Accommodation where
     toField a = Csv.toField $ show a
 
-iso8601 :: Day -> String
-iso8601 d = TimeFormat.formatTime TimeFormat.defaultTimeLocale (TimeFormat.iso8601DateFormat Nothing) d
+iso8601Day :: Day -> String
+iso8601Day d = TimeFormat.formatTime TimeFormat.defaultTimeLocale (TimeFormat.iso8601DateFormat Nothing) d
+
+iso8601 :: UTCTime -> String
+iso8601 = TimeFormat.formatTime TimeFormat.defaultTimeLocale "%FT%T%QZ"
 
 representDivisions :: Set.Set DT.Division -> T.Text
 representDivisions divisions = (T.intercalate "," $ DT.divisionLabel <$> Set.toList divisions)
@@ -244,8 +245,8 @@ instance Csv.ToNamedRecord CsvFrisbeeParticipant where
             , "Partner Open Coop" Csv..= P.partnerOpenCoop frisbeeDetail
             , "Partner Mixed Pairs" Csv..= P.partnerMixedPairs frisbeeDetail
             , "Looking for Partner" Csv..= representDivisions (P.lookingForPartner frisbeeDetail)
-            , "Ankunft" Csv..= (iso8601 $ P.arrival frisbeeDetail) -- TODO: time 1.9 added iso8601 formats, but it conflicts with other versions
-            , "Abreise" Csv..= (iso8601 $ P.departure frisbeeDetail)
+            , "Ankunft" Csv..= (iso8601Day $ P.arrival frisbeeDetail) -- TODO: time 1.9 added iso8601 formats, but it conflicts with other versions
+            , "Abreise" Csv..= (iso8601Day $ P.departure frisbeeDetail)
             , (fixEncoding "Übernachtung") Csv..= accommodation
             , "Anmerkung" Csv..= comment
             ]
@@ -311,6 +312,13 @@ payRegistrationsHandler conn user (ParticipantId participantId) = do
     requireAdmin user
     liftIO $ Db.payRegistration conn (Db.DbId participantId)
     redirectTo "/admin"
+
+printParticipantsHandler :: Db.Handle -> User -> Handler Page.Html
+printParticipantsHandler conn user = do
+    requireAdmin user
+    participants <- liftIO $ Db.allParticipants conn
+    pure $ Page.participationPrintPage participants
+
 
 printRegistrationsHandler :: Db.Handle -> User -> Handler Page.Html
 printRegistrationsHandler conn user = do

@@ -16,6 +16,7 @@ module Domain.Participant
   , participantName
   , participantBirthday
   , participantTicket
+  , participantAccommodation
   , Ticket(..)
   , ticketLabel
   , defaultTicket
@@ -55,6 +56,10 @@ participantBirthday (Participant' _ pI _ _) = birthday pI
 
 participantTicket :: Participant' status -> Ticket
 participantTicket (Participant' _ _ t _) = t
+
+participantAccommodation :: Participant' status -> Accommodation
+participantAccommodation (Participant' _ _ _ (ForJuggler acc)) = acc
+participantAccommodation (Participant' _ _ _ (ForFrisbee acc _)) = acc
 
 data FrisbeeDetail
     = FrisbeeDetail
