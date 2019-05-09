@@ -186,6 +186,7 @@ instance Csv.ToNamedRecord CsvRegistration where
             , "Summe Tickets" Csv..= (show $ D.priceToPay r)
             , "Bezahlt?" Csv..= (case paidStatus of DT.NotPaid -> "false"; DT.Paid -> "true" :: String)
             , "Anzahl Teilnehmer" Csv..= (show $ length participants)
+            , "Teilnehmertyp" Csv..= (case D.isFrisbee r of True -> "frisbee"; False -> "jongleur" :: String)
             , "Anmerkung" Csv..= comment
             , "Angemeldet am" Csv..= iso8601 registeredAt
             ]
@@ -196,7 +197,7 @@ registrationsCsvHandler :: Db.Handle -> User -> Handler BSL.ByteString
 registrationsCsvHandler conn user = do
     requireAdmin user
     registrations <- liftIO $ Db.allRegistrations' conn
-    let headers = fixEncoding <$> V.fromList [ "E-Mail", "Erster Name", "Verwendungszweck", "Summe Tickets", "Bezahlt?", "Anzahl Teilnehmer", "Anmerkung", "Angemeldet am" ]
+    let headers = fixEncoding <$> V.fromList [ "E-Mail", "Erster Name", "Verwendungszweck", "Summe Tickets", "Bezahlt?", "Anzahl Teilnehmer", "Teilnehmertyp", "Anmerkung", "Angemeldet am" ]
     pure $ Csv.encodeByName headers $ fmap CsvRegistration registrations
 
 newtype CsvFrisbeeParticipant = CsvFrisbeeParticipant D.ExistingRegistration
