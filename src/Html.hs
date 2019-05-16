@@ -27,6 +27,7 @@ import Data.Time.LocalTime (utcToZonedTime, hoursToTimeZone, ZonedTime)
 import Data.Maybe (catMaybes, fromMaybe)
 import Prelude hiding (id)
 import Data.Coerce (coerce)
+import Control.Monad (guard)
 
 import qualified IO.Db as Db
 import Types
@@ -58,6 +59,21 @@ layout inner = do
 instance H.ToMarkup DT.Name where
     toMarkup (DT.Name x) = H.toMarkup x
 
+
+filteredParticipants :: [P.ExistingParticipant] -> P.Accommodation -> P.Stay -> Int
+filteredParticipants participants accommodation stay = length $ do
+    p@(P.Participant' _ _ (P.Ticket _ _ pStay _) _) <- participants
+    guard $ pStay == stay
+    guard $ P.participantAccommodation p == accommodation
+    pure p
+
+filteredParticipants' :: [P.ExistingParticipant] -> P.Accommodation -> Int
+filteredParticipants' participants accommodation = length $ do
+    p@(P.Participant' _ _ (P.Ticket _ _ pStay _) _) <- participants
+    guard $ P.participantAccommodation p == accommodation
+    pure p
+
+
 participationListPage :: [P.ExistingParticipant] -> H.Html
 participationListPage participants = layout $ do
     row $ do
@@ -72,12 +88,38 @@ participationListPage participants = layout $ do
                     H.a ! A.class_ "nav-link active" ! A.href "/admin/participants" $ "Teilnehmer"
     row $ do
         col 12 $ do
-            H.div ! A.class_ "alert alert-primary" $ do
-                H.ul $ do
-                    H.li $ do
-                        H.strong $ H.toHtml $ length participants
-                        " Teilnehmer"
-
+            H.table ! A.class_ "table" $ do
+                H.thead $ do
+                    H.th mempty
+                    H.th ! A.class_ "text-right" $ "Do–So"
+                    H.th ! A.class_ "text-right" $ "Fr–So"
+                    H.th ! A.class_ "text-right" $ "Summe"
+                H.tbody $ do
+                    H.tr $ do
+                        H.th $ "Schlafhalle"
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Gym P.LongStay
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Gym P.ShortStay
+                        H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ filteredParticipants' participants P.Gym
+                    H.tr $ do
+                        H.th $ "Hostel"
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Hostel P.LongStay
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Hostel P.ShortStay
+                        H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ filteredParticipants' participants P.Hostel
+                    H.tr $ do
+                        H.th $ "Camping"
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Camping P.LongStay
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.Camping P.ShortStay
+                        H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ filteredParticipants' participants P.Camping
+                    H.tr $ do
+                        H.th $ "Woanders"
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.SelfOrganized P.LongStay
+                        H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants participants P.SelfOrganized P.ShortStay
+                        H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ filteredParticipants' participants P.SelfOrganized
+                    H.tr $ do
+                        H.td mempty
+                        H.td mempty
+                        H.td mempty
+                        H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ length participants
     row $ do
         col 12 $ do
             H.table ! A.class_ "table" $ do
@@ -86,6 +128,7 @@ participationListPage participants = layout $ do
                         H.th "Name"
                         H.th "Geburtsdatum"
                         H.th "Ticket"
+                        H.th "Schlafgelegenheit"
                         H.th "Kommentar"
                 H.tbody $ mapM_ participantRow participants
   where
@@ -95,6 +138,7 @@ participationListPage participants = layout $ do
             H.td $ H.toHtml $ P.participantName p
             H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
             H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+            H.td $ H.toHtml $ show $ P.participantAccommodation p
             H.td "TODO"
 
 registrationListPage' :: [R.ExistingRegistration] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html

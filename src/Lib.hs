@@ -186,7 +186,7 @@ instance Csv.ToNamedRecord CsvRegistration where
             , "Summe Tickets" Csv..= (show $ D.priceToPay r)
             , "Bezahlt?" Csv..= (case paidStatus of DT.NotPaid -> "false"; DT.Paid -> "true" :: String)
             , "Anzahl Teilnehmer" Csv..= (show $ length participants)
-            , "Teilnehmertyp" Csv..= (case D.isFrisbee r of True -> "frisbee"; False -> "jongleur" :: String)
+            , "Teilnehmertyp" Csv..= (if D.isFrisbee r then "frisbee" else "jongleur" :: String)
             , "Anmerkung" Csv..= comment
             , "Angemeldet am" Csv..= iso8601 registeredAt
             ]
