@@ -400,7 +400,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
     commentText German = "Außerdem hast du uns folgenden Kommentar hinterlassen:"
     commentText English = "You sent us the following comment:"
     restText German =
-        [ "bitte überweise das Geld dafür bis zum 15.05.2019 auf unser Konto:"
+        [ "bitte überweise das Geld dafür bis zum 29.05.2019 auf unser Konto:"
         , "Empfänger: Jonglieren in Freiburg e.V."
         , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
         , "IBAN: DE26 6805 0101 0012 0917 91"
