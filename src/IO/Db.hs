@@ -169,10 +169,9 @@ payRegistration (Handle pool) (DbId id') = do
 allParticipantsWithRegistration :: Handle -> IO [(P.ExistingParticipant, R.ExistingRegistration)]
 allParticipantsWithRegistration handle = do
     registrations <- allRegistrations' handle
-    let f a (r@R.Registration{..}) = fmap (\p -> (p, r)) (NE.toList participants) ++ a
+    let f a r@R.Registration{..} = fmap (\p -> (p, r)) (NE.toList participants) ++ a
     let result = L.foldl' f [] registrations
-    -- TODO: Sort by name
-    pure result
+    pure $ L.sortOn (P.participantName . fst) result
 
 allRegistrations' :: Handle -> IO [R.ExistingRegistration]
 allRegistrations' handle@(Handle pool) = do

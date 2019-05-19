@@ -38,7 +38,7 @@ import GHC.Generics
 newtype Id = Id Int deriving (Show, Eq)
 newtype RegisteredAt = RegisteredAt UTCTime deriving Show
 newtype Birthday = Birthday Day deriving Show
-newtype Name = Name T.Text deriving Show
+newtype Name = Name T.Text deriving (Show, Ord, Eq)
 newtype City = City T.Text deriving (Show, Generic)
 newtype Country = Country T.Text deriving (Show, Generic)
 newtype PhoneNumber = PhoneNumber T.Text deriving (Show, Generic)
