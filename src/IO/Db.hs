@@ -9,9 +9,7 @@ module IO.Db
     , saveRegistration'
     , deleteRegistration
     , payRegistration
-    , allJugglers
-    , allFrisbees
-    , allParticipants
+    , allParticipantsWithRegistration
     , allRegistrations
     , allFrisbeeRegistrations
     , allRegistrations'
@@ -33,6 +31,7 @@ import Database.PostgreSQL.Simple.ToField (ToField, toField)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
 import qualified Data.List.NonEmpty as NE
+import qualified Data.List as L
 import Prelude hiding (id)
 
 import Data.Time.Clock (getCurrentTime, UTCTime)
@@ -167,20 +166,13 @@ payRegistration (Handle pool) (DbId id') = do
     Pool.withResource pool $ \conn -> do
         void $ PSQL.execute conn "UPDATE registrations SET paidAt = ? WHERE id = ?" (t, id')
 
-allParticipants :: Handle -> IO [P.ExistingParticipant]
-allParticipants (Handle pool) =
-    Pool.withResource pool $ \conn -> do
-        PSQL.query_ conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants"
-
-allJugglers :: Handle -> IO [P.ExistingParticipant]
-allJugglers handle = do
-    all' <- allParticipants handle
-    pure $ filter P.isJuggler all'
-
-allFrisbees :: Handle -> IO [P.ExistingParticipant]
-allFrisbees handle = do
-    all' <- allParticipants handle
-    pure $ filter P.isFrisbee all'
+allParticipantsWithRegistration :: Handle -> IO [(P.ExistingParticipant, R.ExistingRegistration)]
+allParticipantsWithRegistration handle = do
+    registrations <- allRegistrations' handle
+    let f a (r@R.Registration{..}) = fmap (\p -> (p, r)) (NE.toList participants) ++ a
+    let result = L.foldl' f [] registrations
+    -- TODO: Sort by name
+    pure result
 
 allRegistrations' :: Handle -> IO [R.ExistingRegistration]
 allRegistrations' handle@(Handle pool) = do

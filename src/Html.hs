@@ -74,8 +74,9 @@ filteredParticipants' participants accommodation = length $ do
     pure p
 
 
-participationListPage :: [P.ExistingParticipant] -> H.Html
-participationListPage participants = layout $ do
+participationListPage :: [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
+participationListPage participants' = layout $ do
+    let participants = fmap fst participants'
     row $ do
         col 12 $ do
             H.h1 "Teilnehmer"
@@ -120,6 +121,9 @@ participationListPage participants = layout $ do
                         H.td mempty
                         H.td mempty
                         H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ length participants
+    rowWithSpace $ do
+        col 12 $ do
+            H.a ! A.href "/admin/participants/print" $ "Druckansicht"
     row $ do
         col 12 $ do
             H.table ! A.class_ "table" $ do
@@ -129,17 +133,19 @@ participationListPage participants = layout $ do
                         H.th "Geburtsdatum"
                         H.th "Ticket"
                         H.th "Schlafgelegenheit"
+                        H.th "Bezahlt?"
                         H.th "Kommentar"
-                H.tbody $ mapM_ participantRow participants
+                H.tbody $ mapM_ participantRow participants'
   where
-    participantRow :: P.ExistingParticipant -> H.Html
-    participantRow p@(P.Participant' _ _ _ _) = do
+    participantRow :: (P.ExistingParticipant, R.ExistingRegistration) -> H.Html
+    participantRow (p, R.Registration{..}) = do
         H.tr $ do
             H.td $ H.toHtml $ P.participantName p
             H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
             H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
             H.td $ H.toHtml $ show $ P.participantAccommodation p
-            H.td "TODO"
+            H.td $ H.toHtml $ paidToText paidStatus
+            H.td $ H.toHtml $ fromMaybe "" comment
 
 registrationListPage' :: [R.ExistingRegistration] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
 registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit) = layout $ do
@@ -610,24 +616,33 @@ bootstrapRadios ref view =
     in
         mapM_ radio options
 
-participationPrintPage :: [P.ExistingParticipant] -> H.Html
+participationPrintPage :: [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
 participationPrintPage participants = layout $ do
     row $ do
         col 12 $ do
             H.div ! A.class_ "fixed-header" $ do
-                H.h1 ! A.class_ "text-center" $ "Schülerliste"
+                H.h3 ! A.class_ "text-center" $ "Anmeldeliste 21. Freiburger Jonglierfestival – 30. Mai bis 2. Juni 2019"
     row $ do
         col 12 $ do
             H.table ! A.class_ "table table-bordered table-sm" $ do
                 H.thead $ do
                     H.tr $ do
-                        H.th ! A.colspan "10" $ "Mit meiner Unterschrift nehme ich zur Kenntnis, dass die Veranstalter des 15. Pfälzer Jongliertreffens (12. - 14.10.2018) keine Haftung für Diebstahl, Sach- oder Personenschäden übernehmen können."
+                        H.td ! A.colspan "10" $ do
+                          H.strong "Haftungsausschluss: "
+                          "Mit meiner Unterschrift bestätige ich, dass mir bekannt ist, dass auf dem Jonglierfestival Freiburg von den OrganisatorInnen keine Haftung für eventuell auftretende Verletzungen, Diebstähle etc. übernommen werden kann. Dies gilt auch für alle Zwischenfälle während der Anfahrt oder Rückreise. Weiterhin bestätige ich, dass ich ausreichend versichtert bin (Haft- und Unfallversicherung), die Hallenordnung anerkenne und den Anweisungen der OrganisatorInnen Folge leiste."
+                          H.br
+                          H.strong "Erklärung zur Bildnutzung: "
+                          "Mit meiner Unterschrift erkläre ich mich einverstanden, dass Fotos, die während des Festivals von mir gemacht werden, auf der Webseite "
+                          H.a ! A.href "https://www.jonglieren-in-freiburg.de" $ "www.jonglieren-in-freiburg.de"
+                          " veröffentlicht und für Pressezwecke genutzt werden dürfen."
                     H.tr $ do
                         H.th ""
                         H.th "Name"
                         H.th "Geburtsdatum"
-                        H.th "Wo?"
+                        H.th "Post-Adresse"
                         H.th "Ticket"
+                        H.th "Wo?"
+                        H.th "Bezahlung"
                         H.th "Unterschrift"
                 H.tbody $ do
                     mapM_ participantRow (zip [(1 :: Int)..] participants)
@@ -644,18 +659,22 @@ participationPrintPage participants = layout $ do
             H.td mempty
             H.td mempty
             H.td mempty
-    participantRow (n, p) =
+            H.td mempty
+            H.td mempty
+    participantRow (n, (p, R.Registration{..})) =
         rowWithMinHeight $ do
             numberColumn n
             H.td $ H.toHtml $ P.participantName p
-            H.td ! A.style "width: 100px" $ H.toHtml $ formatBirthday $ P.participantBirthday p
-            H.td ! A.class_ "text-center" ! A.style "width: 40px" $ sleepOverShort $ P.participantAccommodation p
+            H.td ! A.style "width: 80px" $ H.toHtml $ formatBirthday $ P.participantBirthday p
+            H.td mempty
             H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+            H.td ! A.class_ "text-center" ! A.style "width: 40px" $ sleepOverShort $ P.participantAccommodation p
+            H.td $ H.toHtml $ paidToText paidStatus
             H.td $ mempty
-    sleepOverShort P.Camping = "C"
-    sleepOverShort P.SelfOrganized = ""
-    sleepOverShort P.Hostel = "H"
-    sleepOverShort P.Gym = "G"
+    sleepOverShort P.Camping = "Camp"
+    sleepOverShort P.SelfOrganized = "—"
+    sleepOverShort P.Hostel = "Hostel"
+    sleepOverShort P.Gym = "Halle"
 registrationPrintPage :: [Db.DbParticipant] -> H.Html
 registrationPrintPage participants = layout $ do
     row $ do
@@ -723,3 +742,7 @@ rowWithSpace inner = H.div ! A.class_ "row mb-2" $ inner
 col :: Int -> Html -> Html
 col columns inner =
     H.div ! A.class_ (H.toValue $ "col-md-" ++ show columns) $ inner
+
+paidToText :: DT.PaidStatus -> T.Text
+paidToText DT.Paid = "Bezahlt"
+paidToText DT.NotPaid = "Nicht bezahlt"

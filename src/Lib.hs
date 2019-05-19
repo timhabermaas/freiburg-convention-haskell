@@ -319,7 +319,7 @@ payRegistrationsHandler conn user (ParticipantId participantId) = do
 printParticipantsHandler :: Db.Handle -> User -> Handler Page.Html
 printParticipantsHandler conn user = do
     requireAdmin user
-    participants <- liftIO $ Db.allParticipants conn
+    participants <- liftIO $ Db.allParticipantsWithRegistration conn
     pure $ Page.participationPrintPage participants
 
 
@@ -332,8 +332,8 @@ printRegistrationsHandler conn user = do
 listParticipantsHandler :: Db.Handle -> User -> Handler Page.Html
 listParticipantsHandler  conn user = do
     requireAdmin user
-    jugglers <- liftIO $ Db.allParticipants conn
-    pure $ Page.participationListPage jugglers
+    participants <- liftIO $ Db.allParticipantsWithRegistration conn
+    pure $ Page.participationListPage participants
 
 
 successHandler :: Handler Page.Html
