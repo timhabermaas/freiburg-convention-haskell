@@ -124,8 +124,8 @@ defaultTicket = head jugglerTicketChoices
 
 -- Make sure to not remove any tickets once this is live.
 -- Also: Tag each ticket with either juggler or frisbee to not mix them up
-jugglerTicketChoices :: [Ticket]
-jugglerTicketChoices =
+oldJugglerTicketChoices :: [Ticket]
+oldJugglerTicketChoices =
     [ Ticket (Id 1) OlderThan12 LongStay (Price 39)
     , Ticket (Id 2) Child LongStay (Price 20)
     , Ticket (Id 3) Baby LongStay (Price 0)
@@ -134,8 +134,8 @@ jugglerTicketChoices =
     , Ticket (Id 6) Baby ShortStay (Price 0)
     ]
 
-frisbeeTicketChoices :: [Ticket]
-frisbeeTicketChoices =
+oldFrisbeeTicketChoices :: [Ticket]
+oldFrisbeeTicketChoices =
     [ Ticket (Id 7) OlderThan12 LongStay (Price 44)
     , Ticket (Id 8) Child LongStay (Price 25)
     , Ticket (Id 9) Baby LongStay (Price 0)
@@ -144,8 +144,28 @@ frisbeeTicketChoices =
     , Ticket (Id 12) Baby ShortStay (Price 0)
     ]
 
+jugglerTicketChoices :: [Ticket]
+jugglerTicketChoices =
+    [ Ticket (Id 13) OlderThan12 LongStay (Price 45)
+    , Ticket (Id 14) Child LongStay (Price 23)
+    , Ticket (Id 15) Baby LongStay (Price 0)
+    , Ticket (Id 16) OlderThan12 ShortStay (Price 36)
+    , Ticket (Id 17) Child ShortStay (Price 18)
+    , Ticket (Id 18) Baby ShortStay (Price 0)
+    ]
+
+frisbeeTicketChoices :: [Ticket]
+frisbeeTicketChoices =
+    [ Ticket (Id 19) OlderThan12 LongStay (Price 50)
+    , Ticket (Id 20) Child LongStay (Price 28)
+    , Ticket (Id 21) Baby LongStay (Price 0)
+    , Ticket (Id 22) OlderThan12 ShortStay (Price 41)
+    , Ticket (Id 23) Child ShortStay (Price 23)
+    , Ticket (Id 24) Baby ShortStay (Price 0)
+    ]
+
 allTicketChoices :: [Ticket]
-allTicketChoices = jugglerTicketChoices ++ frisbeeTicketChoices
+allTicketChoices = oldJugglerTicketChoices ++ oldFrisbeeTicketChoices ++ jugglerTicketChoices ++ frisbeeTicketChoices
 
 ticketFromId :: Id -> Ticket
 ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') allTicketChoices
