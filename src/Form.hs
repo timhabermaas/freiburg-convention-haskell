@@ -175,7 +175,7 @@ dateFields (year, month, day) =
                        <*> "day" DF..: DF.choice days (Just day)
   where
     years :: [(Integer, T.Text)]
-    years = fmap (\y -> (y, T.pack $ show y)) [1850..2019]
+    years = fmap (\y -> (y, T.pack $ show y)) [1850..2020]
 
     months :: [(Int, T.Text)]
     months =
