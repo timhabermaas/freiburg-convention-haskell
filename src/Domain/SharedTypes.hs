@@ -22,9 +22,6 @@ module Domain.SharedTypes
   , City(..)
   , Country(..)
   , PhoneNumber(..)
-  , Division(..)
-  , Partner(..)
-  , divisionLabel
   , PaidStatus(..)
   , paidStatusFromMaybeTime
   ) where
@@ -46,8 +43,6 @@ instance Ord Name where
 newtype City = City T.Text deriving (Show, Generic)
 newtype Country = Country T.Text deriving (Show, Generic)
 newtype PhoneNumber = PhoneNumber T.Text deriving (Show, Generic)
-data Division = OpenPairs | OpenCoop | MixedPairs | Other T.Text deriving (Show, Generic, Ord, Eq)
-newtype Partner division = Partner T.Text deriving (Show, Generic)
 
 instance ToJSON Country
 instance FromJSON Country
@@ -55,10 +50,6 @@ instance ToJSON City
 instance FromJSON City
 instance ToJSON PhoneNumber
 instance FromJSON PhoneNumber
-instance ToJSON Division
-instance FromJSON Division
-instance ToJSON (Partner div)
-instance FromJSON (Partner div)
 
 newtype MailAddress = MkMailAddress T.Text deriving Show
 
@@ -88,12 +79,6 @@ newtype Price = Price Int deriving (Eq, Num)
 
 instance Show Price where
     show (Price x) = show x <> "€"
-
-divisionLabel :: Division -> T.Text
-divisionLabel OpenPairs = "Open Pairs"
-divisionLabel OpenCoop = "Open Coop"
-divisionLabel MixedPairs = "Mixed Pairs"
-divisionLabel (Other t) = "Other: " <> t
 
 data PaidStatus = Paid | NotPaid deriving (Show, Eq)
 

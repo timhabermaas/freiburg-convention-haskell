@@ -4,7 +4,6 @@
 
 module Html
   ( registerPage
-  , frisbeeRegisterPage
   , successPage
   , registrationListPage
   , registrationListPage'
@@ -584,50 +583,12 @@ registerPage
 registerPage view isOverLimit = layout $ do
   row $ do
     col 12 $ do
-      H.h1
-        ! A.class_ "mb-4"
-        $ "Anmeldung zur Freiburger Jonglierconvention 2020"
+      H.h1 "Anmeldung zur Freiburger Jonglierconvention 2020"
   row $ do
     col 12 $ do
       noSleepingMessage isOverLimit
-      H.ul ! A.class_ "nav nav-tabs" $ do
-        H.li ! A.class_ "nav-item" $ do
-          H.a
-            ! A.href "/"
-            ! A.class_ "nav-link active"
-            $ "Juggling Convention/German Open Guests"
-        H.li ! A.class_ "nav-item" $ do
-          H.a
-            ! A.href "/frisbeeRegistration"
-            ! A.class_ "nav-link"
-            $ "German Open Freestyle Frisbee"
       H.br
       jugglingRegisterForm view
-
-frisbeeRegisterPage
-  :: DV.View T.Text
-  -> (GymSleepingLimitReached, CampingSleepingLimitReached)
-  -> H.Html
-frisbeeRegisterPage frisbeeView isOverLimit = layout $ do
-  row $ do
-    col 12 $ do
-      H.h1 ! A.class_ "mb-4" $ "Registration for German Open Freestyle Frisbee"
-  row $ do
-    col 12 $ do
-      noSleepingMessage isOverLimit
-      H.ul ! A.class_ "nav nav-tabs" $ do
-        H.li ! A.class_ "nav-item" $ do
-          H.a
-            ! A.href "/"
-            ! A.class_ "nav-link"
-            $ "Juggling Convention/German Open Guests"
-        H.li ! A.class_ "nav-item" $ do
-          H.a
-            ! A.href "/frisbeeRegistration"
-            ! A.class_ "nav-link active"
-            $ "German Open Freestyle Frisbee"
-      H.br
-      frisbeeRegisterForm frisbeeView
 
 dateForm :: T.Text -> T.Text -> DV.View T.Text -> Html
 dateForm labelText englishLabelText dateView = do
@@ -671,104 +632,6 @@ checkboxesWithOther labelText englishLabelText view = do
     bootstrapCheckboxes "choice" (modifiedView view)
     DH.inputText "text" (modifiedView view) ! A.class_ "form-control"
     formErrorMessage "choice" view
-
-
-frisbeeRegisterForm :: DV.View T.Text -> Html
-frisbeeRegisterForm view = do
-  H.div ! A.class_ "alert alert-primary" ! A.role "alert" $ do
-    "Anyone not competing in the German Open should register for the juggling convention "
-    H.a ! A.href "/" $ "here"
-    ". This includes any guests of competitors."
-  H.form ! A.action "/registerFrisbee" ! A.method "post" $ do
-    H.div ! A.class_ "form-group" $ do
-      label "E-Mail" "Email" "email" view
-      DH.inputText "email" view ! A.class_ "form-control"
-      formErrorMessage "email" view
-    H.div ! A.class_ "form-group d-none" $ do
-      label "Name" "Full Name" "botField" view
-      DH.inputText "botField" view ! A.class_ "form-control"
-
-    H.div ! A.class_ "form-group" $ do
-      label "Name" "Full Name" "name" view
-      DH.inputText "name" view ! A.class_ "form-control"
-      formErrorMessage "name" view
-
-    dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
-
-    row $ do
-      col 6 $ do
-        H.div ! A.class_ "form-group" $ do
-          label "Festivalticket" "Ticket" "ticket" view
-          DH.inputSelect "ticket" (modifiedView view) ! A.class_ "form-control"
-          formErrorMessage "ticket" view
-      col 6 $ do
-        H.div ! A.class_ "form-group" $ do
-          label "Unterkunft" "Accommodation" "accommodation" view
-          DH.inputSelect "accommodation" (modifiedView view)
-            ! A.class_ "form-control"
-          formErrorMessage "accommodation" view
-
-    let subView = DV.subView "frisbeeParticipant" view
-
-    H.div ! A.class_ "form-group" $ do
-      label "Stadt" "City" "city" subView
-      DH.inputText "city" subView ! A.class_ "form-control"
-      formErrorMessage "city" subView
-
-    H.div ! A.class_ "form-group" $ do
-      label "Land" "Country" "country" subView
-      DH.inputText "country" subView ! A.class_ "form-control"
-      formErrorMessage "country" subView
-
-    H.div ! A.class_ "form-group" $ do
-      label "Telefonnummer (mobil)" "Mobile phone number" "phoneNumber" subView
-      DH.inputText "phoneNumber" subView ! A.class_ "form-control"
-      formErrorMessage "phoneNumber" subView
-
-    {-
-        H.div ! A.class_ "form-group" $ do
-            label "Player/Guest" "playerOrGuest" subView
-            DH.inputSelect "playerOrGuest" (modifiedView subView) ! A.class_ "form-control"
-            formErrorMessage "playerOrGuest" subView
-        -}
-    checkboxesWithOther
-      "Divisions: Select the divisons you want to compete in"
-      ""
-      (DV.subView "divisionParticipation" subView)
-    H.div ! A.class_ "form-group" $ do
-      label "Partner Open Pairs" "" "partnerOpenPairs" subView
-      DH.inputText "partnerOpenPairs" subView ! A.class_ "form-control"
-      formErrorMessage "partnerOpenPairs" subView
-    H.div ! A.class_ "form-group" $ do
-      label "Partner Open Coop" "" "partnerOpenCoop" subView
-      DH.inputText "partnerOpenCoop" subView ! A.class_ "form-control"
-      formErrorMessage "partnerOpenCoop" subView
-    H.div ! A.class_ "form-group" $ do
-      label "Partner Mixed Pairs" "" "partnerMixedPairs" subView
-      DH.inputText "partnerMixedPairs" subView ! A.class_ "form-control"
-      formErrorMessage "partnerMixedPairs" subView
-
-
-    checkboxesWithOther
-      "Need Partners: Check boxes below, if you do not have all your partners for all divisions you want to play"
-      ""
-      (DV.subView "lookingForPartner" subView)
-
-    dateForm "Ankunft" "Arrival" $ DV.subView "arrival" subView
-    dateForm "Abreise" "Departure" $ DV.subView "departure" subView
-
-    H.div ! A.class_ "form-group" $ do
-      label "Willst du uns noch etwas mitteilen?"
-            "Anything you want to tell us?"
-            "comment"
-            view
-      DH.inputTextArea Nothing Nothing "comment" (modifiedView view)
-        ! A.class_ "form-control"
-      formErrorMessage "comment" view
-
-    H.div ! A.class_ "form-group" $ do
-      H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value
-        "Anmelden"
 
 formErrorMessage :: T.Text -> DV.View T.Text -> Html
 formErrorMessage ref view = case DV.errors ref view of

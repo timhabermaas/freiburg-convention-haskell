@@ -7,7 +7,6 @@ module Domain.Registration
   , NewRegistration
   , ExistingRegistration
   , priceToPay
-  , isFrisbee
   ) where
 
 import Domain.SharedTypes
@@ -35,12 +34,3 @@ deriving instance Show NewRegistration
 
 priceToPay :: Registration' p -> Price
 priceToPay (Registration _ _ ps _ _ _ _) = foldl' (+) 0 $ (P.price . P.participantTicket) <$> ps
-
-isFrisbee :: Registration' p -> Bool
-isFrisbee (Registration _ _ ps _ _ _ _) =
-    let
-      (P.Participant' _ _ _ pd) = NE.head ps
-    in
-      case pd of
-        P.ForFrisbee _ _ -> True
-        P.ForJuggler _ -> False

@@ -11,7 +11,6 @@ module IO.Db
     , payRegistration
     , allParticipantsWithRegistration
     , allRegistrations
-    , allFrisbeeRegistrations
     , allRegistrations'
     , allRegistrationsOrderedByName
     , DbParticipant(..)
@@ -69,18 +68,11 @@ instance FromRow P.ExistingParticipant where
         ticketId <- DT.Id <$> field
         let pI = P.PersonalInformation name birthday
         case type_ :: T.Text of
-            "frisbee" -> do
-                let ticket = P.ticketFromId ticketId
-                sleeping <- field
-                data' <- field
-                let (Just parsedJson) = decode' data'
-                pure $ P.Participant' id_ pI ticket (P.ForFrisbee sleeping parsedJson)
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                _ <- field :: RowParser (Maybe T.Text) -- ignoring data attribut
                 pure $ P.Participant' id_ pI ticket (P.ForJuggler sleeping)
-            _ -> fail "type_ must be either frisbee or juggler"
+            _ -> fail "type_ must be of type juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types
 -- e.g. Participant () () would come from the form
@@ -142,15 +134,13 @@ saveRegistration' (Handle pool) R.Registration{..} =
                 case p of
                     P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForJuggler sleeping) ->
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "juggler" :: T.Text)
-                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForFrisbee sleeping data') -> do
-                        PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type, frisbeeDetails) VALUES (?, ?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "frisbee" :: T.Text, encode data')
             pure $ DT.Id registrationId
 
 getRegistration :: Handle -> DT.Id -> IO R.ExistingRegistration
 getRegistration (Handle pool) (DT.Id registrationId) = do
     Pool.withResource pool $ \conn -> do
         [(id, email, paymentCode, comment, registeredAt, paidAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt, paidAt FROM registrations WHERE id = ?" (PSQL.Only registrationId)
-        participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation, frisbeeDetails FROM participants WHERE registrationId = ?" (PSQL.Only id)
+        participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, accommodation FROM participants WHERE registrationId = ?" (PSQL.Only id)
         pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt (DT.paidStatusFromMaybeTime paidAt)
 
 
@@ -179,9 +169,6 @@ allRegistrations' handle@(Handle pool) = do
         registrationIds <- PSQL.query_ conn "SELECT id FROM registrations ORDER BY registeredAt DESC"
         mapM (getRegistration handle) ((\(PSQL.Only id) -> DT.Id id) <$> registrationIds)
 
-allFrisbeeRegistrations :: Handle -> IO [R.ExistingRegistration]
-allFrisbeeRegistrations conn = fmap (filter (\(R.Registration _ _ ps _ _ _ _) -> P.isFrisbee (NE.head ps))) (allRegistrations' conn)
-
 
 allRegistrations :: Handle -> IO [DbParticipant]
 allRegistrations (Handle pool) =
@@ -207,8 +194,7 @@ migrate (Handle pool) =
         , "registrationId int NOT NULL,"
         , "accommodation text NOT NULL,"
         , "type text NOT NULL,"
-        , "ticketId int NOT NULL,"
-        , "frisbeeDetails text);"
+        , "ticketId int NOT NULL);"
 
         , "CREATE TABLE IF NOT EXISTS registrations ("
         , "id SERIAL PRIMARY KEY,"

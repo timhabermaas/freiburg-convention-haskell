@@ -7,7 +7,6 @@ where
 
 import           Lib                            ( app
                                                 , AdminPassword(..)
-                                                , FrisbeePassword(..)
                                                 , Config(..)
                                                 )
 import           Types
@@ -32,18 +31,16 @@ main = do
                    mailHandle
                    readMailList
                    (AdminPassword "admin")
-                   (FrisbeePassword "admin")
 
 spec
   :: Db.Handle
   -> Internal.Handle
   -> IO [Internal.Mail]
   -> AdminPassword
-  -> FrisbeePassword
   -> Spec
-spec dbHandle mailHandle readMailList pw frisbeePw = do
+spec dbHandle mailHandle readMailList pw = do
   let limit = (GymSleepingLimit 2, CampingSleepingLimit 0)
-  with (return $ app (Config mailHandle dbHandle pw frisbeePw limit)) $ do
+  with (return $ app (Config mailHandle dbHandle pw limit)) $ do
     describe "GET /" $ do
       it "responds with 200" $ do
         get "/" `shouldRespondWith` 200

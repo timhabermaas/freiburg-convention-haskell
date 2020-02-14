@@ -3,7 +3,6 @@
 
 module Form
     ( newRegisterForm
-    , newFrisbeeRegisterForm
     , Participant(..)
     , BotCheckResult(..)
     ) where
@@ -28,19 +27,6 @@ participantIsEmpty = SharedTypes.nameEmpty . Domain.participantName
 
 checkForBot :: Monad m => DF.Form T.Text m a -> DF.Form T.Text m (BotCheckResult a)
 checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "botField" DF..: DF.text Nothing <*> innerForm
-
-newFrisbeeRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
-newFrisbeeRegisterForm _ = checkForBot $
-    buildFrisbeeRegistration <$> "name" DF..: mustBePresent (DF.text Nothing)
-                             <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                             <*> "birthday" DF..: birthdayFields
-                             <*> "ticket" DF..: ticketForm Domain.frisbeeTicketChoices
-                             <*> "accommodation" DF..: sleepingForm (Just Domain.Hostel)
-                             <*> "frisbeeParticipant" DF..: frisbeeForm Nothing
-                             <*> "comment" DF..: optionalText
-  where
-    buildFrisbeeRegistration :: T.Text -> T.Text -> Day -> Domain.Ticket -> (Domain.Accommodation) -> Domain.FrisbeeDetail -> Maybe T.Text -> Domain.NewRegistration
-    buildFrisbeeRegistration name email birthday ticket sleeping details comment = Domain.Registration () email (NE.fromList [Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForFrisbee sleeping details)]) comment () () ()
 
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
 newRegisterForm _ = checkForBot $
@@ -71,19 +57,6 @@ validateAndNormalizeEmail = DF.validate validateEmail
             if atSignCount > 0 && partBeforeAtNonEmpty && partAfterAtNonEmpty
                 then DT.Success strippedEmail
                 else DT.Error "not a valid email address"
-
-frisbeeForm :: Monad m => DF.Formlet T.Text m Domain.FrisbeeDetail
-frisbeeForm _def =
-    Domain.FrisbeeDetail <$> "city" DF..: fmap SharedTypes.City (mustBePresent (DF.text Nothing))
-                         <*> "country" DF..: fmap SharedTypes.Country (mustBePresent (DF.text Nothing))
-                         <*> "phoneNumber" DF..: fmap SharedTypes.PhoneNumber (mustBePresent (DF.text Nothing))
-                         <*> "divisionParticipation" DF..: multipleWithFreeFormField Mandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
-                         <*> "partnerOpenPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                         <*> "partnerOpenCoop" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                         <*> "partnerMixedPairs" DF..: fmap (fmap SharedTypes.Partner) (maybeEmpty (DF.text Nothing))
-                         <*> "lookingForPartner" DF..: multipleWithFreeFormField NotMandatory [(SharedTypes.OpenPairs, "Open Pairs"), (SharedTypes.OpenCoop, "Open Coop"), (SharedTypes.MixedPairs, "Mixed Pairs")] (SharedTypes.Other, "Other")
-                         <*> "arrival" DF..: dateFields (2019, 5, 30)
-                         <*> "departure" DF..: dateFields (2019, 6, 2)
 
 data Mandatory = Mandatory | NotMandatory
 

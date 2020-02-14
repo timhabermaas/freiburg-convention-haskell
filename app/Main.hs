@@ -11,6 +11,5 @@ main = do
     sleepingLimit <- read <$> getEnv "SLEEPING_LIMIT"
     campingLimit <- read <$> getEnv "CAMPING_LIMIT"
     pw <- AdminPassword . pack <$> getEnv "ADMIN_PASSWORD"
-    frisbeePw <- FrisbeePassword . pack <$> getEnv "FRISBEE_PASSWORD"
     sendGridApiKey <- lookupEnv "SENDGRID_API_KEY"
-    startApp dbUrl port sleepingLimit campingLimit pw frisbeePw sendGridApiKey
+    startApp dbUrl port sleepingLimit campingLimit pw sendGridApiKey
