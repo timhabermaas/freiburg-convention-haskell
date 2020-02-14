@@ -1,1 +1,1 @@
-web: freiburg2019-exe
+web: freiburg-convention-exe

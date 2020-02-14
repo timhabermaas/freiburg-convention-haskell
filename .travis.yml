@@ -41,8 +41,8 @@ install:
 - stack --no-terminal --install-ghc test --only-dependencies
 
 before_script:
-  - psql -c 'create database freiburg2019_test;' -U postgres
+  - psql -c 'create database freiburg_convention_test;' -U postgres
 
 script:
 # Build the package, its tests, and its docs and run the tests
-  - env DATABASE_URL='postgres://postgres@localhost/freiburg2019_test' stack --no-terminal test --haddock --no-haddock-deps
+  - env DATABASE_URL='postgres://postgres@localhost/freiburg_convention_test' stack --no-terminal test --haddock --no-haddock-deps

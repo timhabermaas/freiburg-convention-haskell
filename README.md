@@ -1,6 +1,6 @@
-# Freiburg2019
+# Freiburg Juggling Convention Registration
 
-[![Build Status](https://travis-ci.org/timhabermaas/freiburg2019.svg?branch=master)](https://travis-ci.org/timhabermaas/freiburg2019)
+[![Build Status](https://travis-ci.org/timhabermaas/freiburg-convention.svg?branch=master)](https://travis-ci.org/timhabermaas/freiburg-convention)
 
 ## Installation
 
@@ -12,8 +12,8 @@ $ stack build
 ## Run the server
 
 ```sh
-$ createdb freiburg2019
-$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg2019' stack exec freiburg2019-exe
+$ createdb freiburg_convention
+$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg_convention' stack exec freiburg-convention-exe
 ```
 
 ### Environment variables
@@ -29,8 +29,8 @@ The following environment variables need to be set:
 ## Run the tests
 
 ```sh
-$ createdb freiburg2019_test
-$ env DATABASE_URL='postgres://localhost/freiburg2019_test' stack test
+$ createdb freiburg_convention_test
+$ env DATABASE_URL='postgres://localhost/freiburg_convention_test' stack test
 ```
 
 ## Deployment
@@ -38,6 +38,6 @@ $ env DATABASE_URL='postgres://localhost/freiburg2019_test' stack test
 The application is currently deployed to Heroku. For deployment run:
 
 ```sh
-$ git remote add heroku https://git.heroku.com/freiburg2019.git
+$ git remote add heroku https://git.heroku.com/freiburg-convention.git
 $ git push heroku master
 ```
