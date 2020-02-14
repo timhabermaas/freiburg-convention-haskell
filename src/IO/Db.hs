@@ -47,7 +47,6 @@ instance ToField P.Accommodation where
     toField P.Gym = toField ("gym" :: T.Text)
     toField P.Camping = toField ("camping" :: T.Text)
     toField P.SelfOrganized = toField ("selfOrganized" :: T.Text)
-    toField P.Hostel = toField ("hostel" :: T.Text)
 
 instance FromField P.Accommodation where
     fromField f bs = do
@@ -56,7 +55,6 @@ instance FromField P.Accommodation where
             "gym" -> pure P.Gym
             "camping" -> pure P.Camping
             "selfOrganized" -> pure P.SelfOrganized
-            "hostel" -> pure P.Hostel
             other -> returnError PSQL.ConversionFailed f $ "ConventionSleeping needs to be either gym, camping or other, it is " ++ other
 
 instance FromRow P.ExistingParticipant where
@@ -71,7 +69,7 @@ instance FromRow P.ExistingParticipant where
             "juggler" -> do
                 let ticket = P.ticketFromId ticketId
                 sleeping <- field
-                pure $ P.Participant' id_ pI ticket (P.ForJuggler sleeping)
+                pure $ P.Participant' id_ pI ticket sleeping
             _ -> fail "type_ must be of type juggler"
 
 -- TODO: Do not expose this datatype, but parameterize the id + registeredAt field of the on in Types
@@ -132,7 +130,7 @@ saveRegistration' (Handle pool) R.Registration{..} =
             _ <- PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
             forM_ participants $ \p -> do
                 case p of
-                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) (P.ForJuggler sleeping) ->
+                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Ticket (DT.Id ticketId) _ _ _) sleeping ->
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type) VALUES (?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "juggler" :: T.Text)
             pure $ DT.Id registrationId
 

@@ -26,7 +26,6 @@ module Domain.Participant
   , ticketFromId
   , ageLabel
   , stayLabel
-  , ParticipantDetail(..)
   ) where
 
 import Domain.SharedTypes
@@ -42,7 +41,7 @@ data PersonalInformation = PersonalInformation
   , birthday :: Birthday
   } deriving Show
 
-data Accommodation = Gym | Camping | SelfOrganized | Hostel deriving (Show, Eq)
+data Accommodation = Gym | Camping | SelfOrganized deriving (Show, Eq)
 
 participantName :: Participant' status -> Name
 participantName (Participant' _ pI _ _) = name pI
@@ -54,14 +53,10 @@ participantTicket :: Participant' status -> Ticket
 participantTicket (Participant' _ _ t _) = t
 
 participantAccommodation :: Participant' status -> Accommodation
-participantAccommodation (Participant' _ _ _ (ForJuggler acc)) = acc
-
-data ParticipantDetail
-    = ForJuggler Accommodation
-    deriving (Show, Generic)
+participantAccommodation (Participant' _ _ _ acc) = acc
 
 data Participant' status
-    = Participant' (MaybePersisted status Id) PersonalInformation Ticket ParticipantDetail
+    = Participant' (MaybePersisted status Id) PersonalInformation Ticket Accommodation
 
 type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted

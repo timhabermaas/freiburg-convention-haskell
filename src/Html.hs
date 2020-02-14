@@ -132,21 +132,6 @@ participationListPage participants' = layout $ do
               $ H.toHtml
               $ filteredParticipants' participants P.Gym
           H.tr $ do
-            H.th $ "Hostel"
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Hostel
-              P.LongStay
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Hostel
-              P.ShortStay
-            H.td
-              ! A.class_ "text-right"
-              $ H.strong
-              $ H.toHtml
-              $ filteredParticipants' participants P.Hostel
-          H.tr $ do
             H.th $ "Camping"
             H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
               participants
@@ -746,7 +731,6 @@ participationPrintPage participants = layout $ do
     H.td $ mempty
   sleepOverShort P.Camping       = "Camp"
   sleepOverShort P.SelfOrganized = "—"
-  sleepOverShort P.Hostel        = "Hostel"
   sleepOverShort P.Gym           = "Halle"
 registrationPrintPage :: [Db.DbParticipant] -> H.Html
 registrationPrintPage participants = layout $ do

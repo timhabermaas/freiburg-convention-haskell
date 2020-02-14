@@ -40,7 +40,7 @@ newRegisterForm _ = checkForBot $
   where
     defaultParticipant :: Domain.NewParticipant
     defaultParticipant =
-        Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket (Domain.ForJuggler Domain.Gym)
+        Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket Domain.Gym
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail
@@ -86,7 +86,7 @@ participantForm _def =
                      <*> "accommodation" DF..: sleepingForm (Just Domain.Gym)
   where
     buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.NewParticipant
-    buildParticipant name birthday ticket sleeping = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket (Domain.ForJuggler sleeping)
+    buildParticipant name birthday ticket sleeping = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket sleeping
 
 sleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
 sleepingForm = DF.choice allChoices
@@ -96,7 +96,6 @@ sleepingForm = DF.choice allChoices
         [ (Domain.Gym, "Schlafhalle (gym)")
         , (Domain.Camping, "Zelt neben der Halle (tent)")
         , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
-        , (Domain.Hostel, "Hostel — nur für Gäste oder Teilnehmer der German Open (hostel, German Open only)")
         ]
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
