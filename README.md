@@ -4,6 +4,8 @@
 
 ## Installation
 
+Install stack, see https://docs.haskellstack.org/en/stable/README.
+
 ```sh
 $ stack setup
 $ stack build
@@ -13,7 +15,7 @@ $ stack build
 
 ```sh
 $ createdb freiburg_convention
-$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg_convention' stack exec freiburg-convention-exe
+$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg_convention' stack run
 ```
 
 ### Environment variables

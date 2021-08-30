@@ -35,7 +35,6 @@ import Prelude hiding (id)
 
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.Time.Calendar (Day)
-import Data.Aeson (encode, decode')
 
 import Types
 
@@ -97,12 +96,6 @@ instance FromField Sleepover where
     fromField f bs = do
         value <- fromField f bs
         case value :: T.Text of
-            -- both, fr and sa are for backwards compability only.
-            -- We used to save the specific day on which the participant slept
-            -- at the convention.
-            "both" -> return GymSleeping
-            "fr" -> return GymSleeping
-            "sa" -> return GymSleeping
             "none" -> return NoNights
             "n/a" -> return CouldntSelect
             "camping" -> return Camping

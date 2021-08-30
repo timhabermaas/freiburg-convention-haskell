@@ -113,7 +113,7 @@ server db mailerHandle limits =
          registerHandler db limits
     :<|> postRegisterHandler db mailerHandle limits
     :<|> successHandler
-    :<|> registrationsHandler db limits
+    :<|> registrationsHandler db
     :<|> registrationsCsvHandler db
     :<|> deleteRegistrationsHandler db
     :<|> payRegistrationsHandler db
@@ -143,11 +143,11 @@ registerHandler conn limits = do
     view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
     pure $ Page.registerPage view overLimit
 
-registrationsHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> User -> Handler Page.Html
-registrationsHandler conn limits user = do
+registrationsHandler :: Db.Handle -> User -> Handler Page.Html
+registrationsHandler conn user = do
     requireAdmin user
     registrations <- liftIO $ Db.allRegistrations' conn
-    pure $ Page.registrationListPage' registrations limits
+    pure $ Page.registrationListPage' registrations
 
 
 -- Using newtype wrapper for Participant because the canonical CSV decoder/encoder for the

@@ -1,11 +1,9 @@
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Domain.Participant
   ( Accommodation(..)
@@ -29,12 +27,8 @@ module Domain.Participant
   ) where
 
 import Domain.SharedTypes
-import GHC.Generics
-import Data.Aeson (ToJSON, FromJSON)
 import Prelude hiding (id)
-import qualified Data.Set as Set
 import qualified Data.Text as T
-import Data.Time.Calendar (Day)
 
 data PersonalInformation = PersonalInformation
   { name :: Name

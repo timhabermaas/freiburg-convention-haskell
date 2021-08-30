@@ -85,7 +85,7 @@ filteredParticipants participants accommodation stay = length $ do
 
 filteredParticipants' :: [P.ExistingParticipant] -> P.Accommodation -> Int
 filteredParticipants' participants accommodation = length $ do
-  p@(P.Participant' _ _ (P.Ticket _ _ pStay _) _) <- participants
+  p <- participants
   guard $ P.participantAccommodation p == accommodation
   pure p
 
@@ -195,11 +195,9 @@ participationListPage participants' = layout $ do
 
 registrationListPage'
   :: [R.ExistingRegistration]
-  -> (GymSleepingLimit, CampingSleepingLimit)
   -> H.Html
-registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit)
+registrationListPage' registrations
   = layout $ do
-    let sleepovers = [] -- fmap Db.dbParticipantSleepovers registrations
     row $ do
       col 12 $ do
         H.h1 "Anmeldungen"
@@ -217,20 +215,6 @@ registrationListPage' registrations (GymSleepingLimit gymSleepingLimit, CampingS
       col 12 $ do
         H.div ! A.class_ "alert alert-primary" $ do
           H.ul $ do
-              {-
-                    H.li $ do
-                        H.strong $ do
-                            H.toHtml $ gymSleepCount sleepovers
-                            " von "
-                            H.toHtml $ gymSleepingLimit
-                        " Übernachtungsplätze in Klassenzimmern belegt"
-                    H.li $ do
-                        H.strong $ do
-                            H.toHtml $ campingSleepCount sleepovers
-                            " von "
-                            H.toHtml $ campingLimit
-                        " Campingspots belegt"
-                    -}
             H.li $ do
               H.strong $ H.toHtml $ length registrations
               " Anmeldungen"
@@ -464,13 +448,6 @@ alert :: T.Text -> H.Html
 alert text = do
   H.div ! A.class_ "alert alert-danger" $ H.toHtml text
 
-renderIf :: Bool -> H.Html -> H.Html
-renderIf True  h = h
-renderIf False _ = mempty
-
-renderUnless :: Bool -> H.Html -> H.Html
-renderUnless b h = renderIf (not b) h
-
 noSleepingMessage
   :: (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
 noSleepingMessage (EnoughGymSleepingSpots, EnoughTentSpots) = mempty
@@ -622,9 +599,6 @@ formErrorMessage :: T.Text -> DV.View T.Text -> Html
 formErrorMessage ref view = case DV.errors ref view of
   [] -> mempty
   es -> H.small ! A.class_ "text-danger" $ H.toHtml $ T.intercalate " " es
-
-registrationEmail :: T.Text
-registrationEmail = "herxheim.convention@gmail.com"
 
 mailLink :: T.Text -> T.Text -> Html
 mailLink text email =
