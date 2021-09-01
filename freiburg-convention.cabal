@@ -47,7 +47,6 @@ library
                      , mtl
                      , postgresql-simple
                      , resource-pool
-                     , sendgrid-v3
                      , servant-blaze
                      , servant-server
                      , text

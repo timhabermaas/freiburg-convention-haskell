@@ -5,13 +5,6 @@
 
 packages:
 - completed:
-    hackage: sendgrid-v3-0.1.2.0@sha256:b53501564466a0d74d2fff4914fd8676ab61592805550547119ca31dcb3b613d,1462
-    pantry-tree:
-      size: 332
-      sha256: c56ad35c5ffa83819397ca9251333730f9c7a94f95b726f623c64a011de36807
-  original:
-    hackage: sendgrid-v3-0.1.2.0
-- completed:
     hackage: digestive-functors-0.8.4.0@sha256:eb2ce9e55a8d2f26a9f5c8386e0d764fe1ce47eb0430af84104bf12dab431fa9,3287
     pantry-tree:
       size: 1682
