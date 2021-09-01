@@ -217,7 +217,6 @@ postRegisterHandler conn mailerHandle limits body = do
                     liftIO $ putStrLn "is bot"
                     redirectTo "/success"
                 Form.IsHuman registration -> do
-                    liftIO $ putStrLn $ show registration
                     registrationId <- liftIO $ Db.saveRegistration' conn registration
                     registration <- liftIO $ Db.getRegistration conn registrationId
                     liftIO $ forkIO $ Mailer.sendMail mailerHandle $ mailForRegistration registration
