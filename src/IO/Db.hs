@@ -139,7 +139,7 @@ getRegistration (Handle pool) (DT.Id registrationId) = do
     Pool.withResource pool $ \conn -> do
         [(id, email, paymentCode, comment, registeredAt, paidAt)] <- PSQL.query conn "SELECT id, email, paymentCode, comment, registeredAt, paidAt FROM registrations WHERE id = ?" (PSQL.Only registrationId)
         participants <- PSQL.query conn "SELECT id, type, name, birthday, ticketId, street, postalCode, city, country, accommodation FROM participants WHERE registrationId = ?" (PSQL.Only id)
-        pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt (DT.paidStatusFromMaybeTime paidAt)
+        pure $ R.Registration (DT.Id id) email (NE.fromList participants) comment (DT.PaymentCode paymentCode) registeredAt (DT.paidStatusFromMaybeTime paidAt) ()
 
 
 deleteRegistration :: Handle -> DbId Participant -> IO ()

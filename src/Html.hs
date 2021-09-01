@@ -526,6 +526,10 @@ jugglingRegisterForm view = do
       formErrorMessage "comment" view
 
     H.div ! A.class_ "form-group" $ do
+      bootstrapSingleCheckbox "covidTermsAccepted" "Du nimmst Impfpass und so mit" (modifiedView view)
+      formErrorMessage "covidTermsAccepted" view
+
+    H.div ! A.class_ "form-group" $ do
       H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value
         "Anmelden"
 
@@ -613,6 +617,23 @@ dateForm labelText englishLabelText dateView = do
     row $ do
       col 12 $ do
         formErrorMessage "" dateView
+
+
+bootstrapSingleCheckbox :: T.Text -> T.Text -> DV.View Html -> Html
+bootstrapSingleCheckbox ref text view =
+  let checked = DV.fieldInputBool ref view
+      ref' :: T.Text
+      ref' = DV.absoluteRef ref view
+      cssId = H.toValue ref'
+  in
+    H.div ! A.class_ "form-check" $ do
+      H.input
+        !  A.id cssId
+        !  A.class_ "form-check-input"
+        !  A.type_ "checkbox"
+        !  A.name (H.toValue ref')
+        !? (checked, A.checked "checked")
+      H.label ! A.class_ "form-check-label" ! A.for cssId $ H.toHtml $ text
 
 
 bootstrapCheckboxes :: T.Text -> DV.View Html -> Html

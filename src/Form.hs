@@ -41,6 +41,7 @@ newRegisterForm _ def = checkForBot $
                         <*> pure ()
                         <*> pure ()
                         <*> pure ()
+                        <*> "covidTermsAccepted" DF..: (() <$ mustBeChecked (DF.bool (Just False)))
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail
@@ -178,6 +179,9 @@ dateFields (year, month, day) =
 
 birthdayFields :: Monad m => DF.Form T.Text m Day
 birthdayFields = dateFields (1990, 1, 1)
+
+mustBeChecked :: (Monad m) => DF.Form T.Text m Bool -> DF.Form T.Text m Bool
+mustBeChecked = DF.check "must be accepted" (== True)
 
 mustBePresent :: (Monad m) => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 mustBePresent = DF.check "can't be blank" notEmpty
