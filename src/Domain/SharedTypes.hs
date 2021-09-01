@@ -13,6 +13,7 @@ module Domain.SharedTypes
   , Name(..)
   , Birthday(..)
   , MailAddress(MailAddress)
+  , fromMailAddress
   , mkMailAddress
   , MaybePersisted()
   , PersistedStatus(..)
@@ -56,6 +57,9 @@ newtype MailAddress = MkMailAddress T.Text deriving Show
 pattern MailAddress :: T.Text -> MailAddress
 pattern MailAddress content = MkMailAddress content
 {-# COMPLETE MailAddress :: MailAddress #-}
+
+fromMailAddress :: MailAddress -> T.Text
+fromMailAddress (MkMailAddress addr) = addr
 
 mkMailAddress :: T.Text -> Maybe MailAddress
 mkMailAddress text =

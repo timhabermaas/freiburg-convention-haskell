@@ -458,7 +458,7 @@ noSleepingMessage (GymSleepingLimitReached, CampingSleepingLimitReached) =
     "Leider sind schon alle Schlafplätze belegt. Du kannst dich aber trotzdem anmelden und vorbei kommen, solange du dir einen eigenen Schlafplatz organisierst."
 noSleepingMessage (GymSleepingLimitReached, EnoughTentSpots) =
   alert
-    "Leider sind schon alle Schlafplätze in den Klassenzimmern belegt. Du kannst dich aber trotzdem anmelden und entweder im Zelt schlafen oder dir einen eigenen Schlafplatz organisieren."
+    "Leider sind schon alle Schlafplätze in der Schlafhalle belegt. Du kannst dich aber trotzdem anmelden und entweder im Zelt schlafen oder dir einen eigenen Schlafplatz organisieren."
 
 participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
@@ -706,6 +706,7 @@ participationPrintPage participants = layout $ do
   sleepOverShort P.Camping       = "Camp"
   sleepOverShort P.SelfOrganized = "—"
   sleepOverShort P.Gym           = "Halle"
+
 registrationPrintPage :: [Db.DbParticipant] -> H.Html
 registrationPrintPage participants = layout $ do
   row $ do

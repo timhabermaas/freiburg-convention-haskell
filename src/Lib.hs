@@ -43,6 +43,7 @@ import Types
 import qualified Domain.Registration as D
 import qualified Domain.Participant as P
 import qualified Domain.SharedTypes as DT
+import Util
 
 data CSV
 
@@ -73,9 +74,9 @@ data Config = Config
     , configSleepingLimits :: (GymSleepingLimit, CampingSleepingLimit)
     }
 
-startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe String -> IO ()
-startApp dbUrl port participationLimit campingLimit pw maybeSendGridApiKey = do
-    let mailerConfig = maybe Mailer.PrinterConfig Mailer.SendGridConfig maybeSendGridApiKey
+startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe (String, String) -> IO ()
+startApp dbUrl port participationLimit campingLimit pw maybeAwsKey = do
+    let mailerConfig = maybe Mailer.PrinterConfig Mailer.AwsSesConfig maybeAwsKey
     Mailer.withConfig mailerConfig $ \mailHandle -> do
         Db.withConfig dbUrl $ \db -> do
             Db.migrate db
@@ -121,21 +122,19 @@ server db mailerHandle limits =
     :<|> printParticipantsHandler db
 
 isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
-isOverLimit _handle (GymSleepingLimit _gymLimit, CampingSleepingLimit _campingLimit) = do
-    pure (EnoughGymSleepingSpots, EnoughTentSpots)
-    {-
-    sleepovers <- liftIO $ fmap Db.dbParticipantSleepovers <$> Db.allRegistrations handle
+isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
+    sleepovers <- liftIO $ fmap P.participantAccommodation <$> Db.allParticipants handle
     let gymLimitReached =
-            if gymSleepCount sleepovers >= gymLimit then
+            if P.gymSleepCount sleepovers >= gymLimit then
                 GymSleepingLimitReached
             else
                 EnoughGymSleepingSpots
     let campingLimitReached =
-            if campingSleepCount sleepovers >= campingLimit then
+            if P.campingSleepCount sleepovers >= campingLimit then
                 CampingSleepingLimitReached
             else
                 EnoughTentSpots
-    pure (gymLimitReached, campingLimitReached) -}
+    pure (gymLimitReached, campingLimitReached)
 
 registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
 registerHandler conn limits = do
@@ -280,7 +279,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
     (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
     subject = "Bestellbestätigung Freiburger Jonglierfestival"
-    newLine = "\n\n"
+    newLine = "\n"
     totalPrice = T.pack $ show $ D.priceToPay registration
     (DT.PaymentCode paymentReason) = D.paymentCode registration
     nameAndTicketLine p =
@@ -303,7 +302,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
         , ((commentText language <> " ") <>) <$> D.comment registration
         , Just $ ""
         ] <> fmap Just (restText language))
-    ticketText German = "du hast für das 21. Freiburger Jonglierfestival folgende Tickets bestellt:"
+    ticketText German = "du hast für das 22. Freiburger Jonglierfestival folgende Tickets bestellt:"
     ticketText English = "you ordered the following tickets for the Freiburg Juggling Convention:"
     salutation German = "Liebe/r"
     salutation English = "Dear"

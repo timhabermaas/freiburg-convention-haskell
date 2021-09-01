@@ -24,6 +24,8 @@ module Domain.Participant
   , ticketFromId
   , ageLabel
   , stayLabel
+  , gymSleepCount
+  , campingSleepCount
   ) where
 
 import Domain.SharedTypes
@@ -36,6 +38,12 @@ data PersonalInformation = PersonalInformation
   } deriving Show
 
 data Accommodation = Gym | Camping | SelfOrganized deriving (Show, Eq)
+
+gymSleepCount :: [Accommodation] -> Int
+gymSleepCount = length . filter (== Gym)
+
+campingSleepCount :: [Accommodation] -> Int
+campingSleepCount = length . filter (== Camping)
 
 participantName :: Participant' status -> Name
 participantName (Participant' _ pI _ _) = name pI

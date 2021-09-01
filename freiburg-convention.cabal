@@ -23,7 +23,7 @@ library
                      , IO.Mailer.InMemoryMailer
                      , IO.Mailer.Internal
                      , IO.Mailer.PrinterMailer
-                     , IO.Mailer.SendGridMailer
+                     , IO.Mailer.AwsSesMailer
                      , IO.Db
                      , Html
                      , Form
@@ -32,6 +32,9 @@ library
   ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , aeson
+                     , amazonka
+                     , amazonka-core
+                     , amazonka-ses
                      , blaze-html
                      , bytestring
                      , cassava

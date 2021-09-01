@@ -37,9 +37,31 @@ $ env DATABASE_URL='postgres://localhost/freiburg_convention_test' stack test
 
 ## Deployment
 
-The application is currently deployed to Heroku. For deployment run:
+The app is deployed to [Heroku](https://www.heroku.com/).
+
+### Create new Heroku instance
+
+Requires the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and the [Haskell Stack
+buildkit](https://github.com/mfine/heroku-buildpack-stack):
+
 
 ```sh
-$ git remote add heroku https://git.heroku.com/freiburg-convention.git
+$ heroku create freiburg2021
+$ heroku buildpacks:set https://github.com/mfine/heroku-buildpack-stack
+$ heroku addons:create heroku-postgresql:hobby-dev
+```
+
+### Setup deployment on different machine
+
+This step is optional if you're using the same machine which ran `heroku create`.
+
+```sh
+$ git remote add heroku https://git.heroku.com/freiburg2021.git
+```
+
+
+### Deploy new version
+
+```sh
 $ git push heroku master
 ```

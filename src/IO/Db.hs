@@ -10,7 +10,7 @@ module IO.Db
     , deleteRegistration
     , payRegistration
     , allParticipantsWithRegistration
-    , allRegistrations
+    , allParticipants
     , allRegistrations'
     , allRegistrationsOrderedByName
     , DbParticipant(..)
@@ -161,10 +161,10 @@ allRegistrations' handle@(Handle pool) = do
         mapM (getRegistration handle) ((\(PSQL.Only id) -> DT.Id id) <$> registrationIds)
 
 
-allRegistrations :: Handle -> IO [DbParticipant]
-allRegistrations (Handle pool) =
-    Pool.withResource pool $ \conn -> do
-        PSQL.query_ conn "SELECT id, name, birthday, street, postalCode, city, country, registeredAt, sleepovers, comment, email FROM participants ORDER BY registeredAt DESC"
+allParticipants :: Handle -> IO [P.ExistingParticipant]
+allParticipants (Handle pool) = do
+    Pool.withResource pool $ \conn ->
+        PSQL.query_ conn "SELECT id, type, name, birthday, ticketId, accommodation FROM participants"
 
 allRegistrationsOrderedByName :: Handle -> IO [DbParticipant]
 allRegistrationsOrderedByName (Handle pool) = do
