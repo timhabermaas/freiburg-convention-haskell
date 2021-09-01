@@ -33,15 +33,16 @@ maybeHuman IsBot = Nothing
 maybeHuman (IsHuman x) = Just x
 
 newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Formlet T.Text m (BotCheckResult Domain.NewRegistration)
-newRegisterForm _ def = checkForBot $
-    Domain.Registration <$> pure ()
-                        <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                        <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf participantForm (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
-                        <*> "comment" DF..: optionalText
-                        <*> pure ()
-                        <*> pure ()
-                        <*> pure ()
-                        <*> "covidTermsAccepted" DF..: (() <$ mustBeChecked (DF.bool (Just False)))
+newRegisterForm _ def = checkForBot $ fmap fst $
+    (,) <$>
+      (Domain.Registration <$> pure ()
+                           <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
+                           <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf participantForm (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
+                           <*> "comment" DF..: optionalText
+                           <*> pure ()
+                           <*> pure ()
+                           <*> pure ())
+                   <*> "covidTermsAccepted" DF..: (mustBeChecked (DF.bool (Just False)))
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail
