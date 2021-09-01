@@ -22,24 +22,25 @@ import qualified Prelude as Prelude
 data BotCheckResult a = IsBot | IsHuman a deriving Show
 
 participantIsEmpty :: Domain.NewParticipant -> Bool
-participantIsEmpty = SharedTypes.nameEmpty . Domain.participantName
+participantIsEmpty p = SharedTypes.nameEmpty (Domain.participantName p)
+                    || Domain.addressIsEmpty (Domain.participantAddress p)
 
 checkForBot :: Monad m => DF.Form T.Text m a -> DF.Form T.Text m (BotCheckResult a)
 checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "botField" DF..: DF.text Nothing <*> innerForm
 
-newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Form T.Text m (BotCheckResult Domain.NewRegistration)
-newRegisterForm _ = checkForBot $
+maybeHuman :: BotCheckResult a -> Maybe a
+maybeHuman IsBot = Nothing
+maybeHuman (IsHuman x) = Just x
+
+newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Formlet T.Text m (BotCheckResult Domain.NewRegistration)
+newRegisterForm _ def = checkForBot $
     Domain.Registration <$> pure ()
                         <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                        <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (fmap (filter (not . participantIsEmpty)) $ DF.listOf participantForm (Just $ replicate 5 defaultParticipant))
+                        <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf participantForm (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
                         <*> "comment" DF..: optionalText
                         <*> pure ()
                         <*> pure ()
                         <*> pure ()
-  where
-    defaultParticipant :: Domain.NewParticipant
-    defaultParticipant =
-        Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name "") (SharedTypes.Birthday $ fromGregorian 2000 10 10)) Domain.defaultTicket Domain.Gym
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail
@@ -79,13 +80,21 @@ multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel)
 
 participantForm :: Monad m => DF.Formlet T.Text m Domain.NewParticipant
 participantForm _def =
-    buildParticipant <$> "name" DF..: DF.text Nothing
+    buildParticipant <$> "name" DF..: mustBePresent (DF.text Nothing)
                      <*> "birthday" DF..: birthdayFields
                      <*> "ticket" DF..: ticketForm Domain.jugglerTicketChoices
                      <*> "accommodation" DF..: sleepingForm (Just Domain.Gym)
+                     <*> "address" DF..: addressForm Nothing
   where
-    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.NewParticipant
-    buildParticipant name birthday ticket sleeping = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) ticket sleeping
+    buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.Address -> Domain.NewParticipant
+    buildParticipant name birthday ticket sleeping address = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) address ticket sleeping
+
+addressForm :: Monad m => DF.Formlet T.Text m Domain.Address
+addressForm _def =
+  Domain.Address <$> "street" DF..: mustBePresent (DF.text Nothing)
+                 <*> "postalCode" DF..: mustBePresent (DF.text Nothing)
+                 <*> "city" DF..: mustBePresent (DF.text Nothing)
+                 <*> "country" DF..: mustBePresent (DF.text Nothing)
 
 sleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
 sleepingForm = DF.choice allChoices
@@ -146,7 +155,7 @@ dateFields (year, month, day) =
                        <*> "day" DF..: DF.choice days (Just day)
   where
     years :: [(Integer, T.Text)]
-    years = fmap (\y -> (y, T.pack $ show y)) [1850..2020]
+    years = fmap (\y -> (y, T.pack $ show y)) [1850..2021]
 
     months :: [(Int, T.Text)]
     months =

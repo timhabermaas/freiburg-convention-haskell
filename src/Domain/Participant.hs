@@ -11,10 +11,15 @@ module Domain.Participant
   , ExistingParticipant
   , NewParticipant
   , PersonalInformation(..)
+  , Address(..)
+  , emptyAddress
+  , addressIsEmpty
+  , formatAddress
   , participantName
   , participantBirthday
   , participantTicket
   , participantAccommodation
+  , participantAddress
   , Ticket(..)
   , ticketLabel
   , defaultTicket
@@ -37,6 +42,23 @@ data PersonalInformation = PersonalInformation
   , birthday :: Birthday
   } deriving Show
 
+data Address = Address
+  { addressStreet :: T.Text
+  , addressPostalCode :: T.Text
+  , addressCity :: T.Text
+  , addressCountry :: T.Text
+  } deriving (Show, Eq)
+
+emptyAddress :: Address
+emptyAddress = Address "" "" "" ""
+
+addressIsEmpty :: Address -> Bool
+addressIsEmpty (Address street postalCode city country) = street == "" || postalCode == "" || city == "" || country == ""
+
+formatAddress :: Address -> T.Text
+formatAddress Address{..}
+  = T.intercalate ", " [addressStreet, addressPostalCode <> " " <> addressCity, addressCountry]
+
 data Accommodation = Gym | Camping | SelfOrganized deriving (Show, Eq)
 
 gymSleepCount :: [Accommodation] -> Int
@@ -46,28 +68,31 @@ campingSleepCount :: [Accommodation] -> Int
 campingSleepCount = length . filter (== Camping)
 
 participantName :: Participant' status -> Name
-participantName (Participant' _ pI _ _) = name pI
+participantName (Participant' _ pI _ _ _) = name pI
 
 participantBirthday :: Participant' status -> Birthday
-participantBirthday (Participant' _ pI _ _) = birthday pI
+participantBirthday (Participant' _ pI _ _ _) = birthday pI
 
 participantTicket :: Participant' status -> Ticket
-participantTicket (Participant' _ _ t _) = t
+participantTicket (Participant' _ _ _ t _) = t
 
 participantAccommodation :: Participant' status -> Accommodation
-participantAccommodation (Participant' _ _ _ acc) = acc
+participantAccommodation (Participant' _ _ _ _ acc) = acc
+
+participantAddress :: Participant' status -> Address
+participantAddress (Participant' _ _ adr _ _) = adr
 
 data Participant' status
-    = Participant' (MaybePersisted status Id) PersonalInformation Ticket Accommodation
+    = Participant' (MaybePersisted status Id) PersonalInformation Address Ticket Accommodation
 
 type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted
 
 instance Show NewParticipant where
-    show (Participant' id_ pI ticket details) = show id_ ++ show pI ++ show details ++ show ticket
+    show (Participant' id_ pI address ticket details) = show id_ ++ show pI ++ show address ++ show details ++ show ticket
 
 instance Show ExistingParticipant where
-    show (Participant' id_ pI ticket details) = show id_ ++ show pI ++ show details ++ show ticket
+    show (Participant' id_ pI address ticket details) = show id_ ++ show pI ++ show address ++ show details ++ show ticket
 
 
 data Stay = LongStay | ShortStay deriving (Show, Eq)

@@ -44,11 +44,11 @@ spec dbHandle mailHandle readMailList pw = do
     describe "GET /" $ do
       it "responds with 200" $ do
         get "/" `shouldRespondWith` 200
-      it "has some FAQ entries" $ do
+      it "has render some content" $ do
         liftIO $ putStrLn "foo"
         get "/"
           `shouldRespondWith` (successAndContains
-                                "Anmeldung zur Freiburger Jonglierconvention 2020"
+                                "Anmeldung zur Freiburger Jonglierconvention 2021"
                               )
 
 successAndContains :: T.Text -> ResponseMatcher

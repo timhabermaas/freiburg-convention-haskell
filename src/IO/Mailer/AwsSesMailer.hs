@@ -6,7 +6,7 @@ module IO.Mailer.AwsSesMailer
 
 import Network.AWS.SES.SendEmail (sendEmail)
 import IO.Mailer.Internal (Handle(..), Mail(Mail))
-import Network.AWS.SES.Types (message, content, body, bText, destination, dToAddresses)
+import Network.AWS.SES.Types (message, content, body, bText, destination, dToAddresses, dCCAddresses)
 import Network.AWS.Lens
 import Network.AWS (newEnv, Credentials(..), within, Region (Frankfurt), send, runResourceT, runAWS)
 import Data.String (IsString(fromString))
@@ -32,4 +32,6 @@ sendMail' (accessKey, secretAccessKey) (Mail mailBody mailSubject (mailToAddress
     content' = content mailSubject
     body' = bText %~ const (Just bodyContent) $ body
     bodyContent = content mailBody
-    destination' = dToAddresses %~ const [fromMailAddress mailToAddress] $ destination
+    destination' = dCCAddresses %~ const ["orga@jonglieren-in-freiburg.de"] $
+                   dToAddresses %~ const [fromMailAddress mailToAddress] $
+                   destination

@@ -139,7 +139,7 @@ isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit
 registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
-    view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit
+    view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit Nothing
     pure $ Page.registerPage view overLimit
 
 registrationsHandler :: Db.Handle -> User -> Handler Page.Html
@@ -206,7 +206,7 @@ iso8601 = TimeFormat.formatTime TimeFormat.defaultTimeLocale "%FT%T%QZ"
 postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
 postRegisterHandler conn mailerHandle limits body = do
     overLimit <- liftIO $ isOverLimit conn limits
-    r <- DF.postForm "Registration" (Form.newRegisterForm overLimit) $ servantPathEnv body
+    r <- DF.postForm "Registration" (Form.newRegisterForm overLimit Nothing) $ servantPathEnv body
     case r of
         (view, Nothing) -> do
             liftIO $ print view
@@ -277,7 +277,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
   where
     (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
-    subject = "Bestellbestätigung Freiburger Jonglierfestival"
+    subject = "[Test] Bestellbestätigung Freiburger Jonglierfestival"
     newLine = "\n"
     totalPrice = T.pack $ show $ D.priceToPay registration
     (DT.PaymentCode paymentReason) = D.paymentCode registration
@@ -308,14 +308,26 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
     commentText German = "Außerdem hast du uns folgenden Kommentar hinterlassen:"
     commentText English = "You sent us the following comment:"
     restText German =
-        [ "Bitte bezahle dein(e) Ticket(s) bar an der Festivalkasse."
+        [ "bitte überweise das Geld dafür bis zum 22.09.2021 auf unser Konto:"
+        , "Empfänger: Jonglieren in Freiburg e.V."
+        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , "IBAN: DE26 6805 0101 0012 0917 91"
+        , "BIC: FRSPDE66XXX"
+        , "Betrag: " <> totalPrice
+        , "Verwendungszweck: " <> paymentReason
         , ""
         , "Wir freuen uns Dich auf dem Festival zu sehen."
         , "Viele Grüße Dein"
         , "Orgateam"
         ]
     restText English =
-        [ "Please pay your ticket(s) in cash at the festival."
+        [ "please transfer the money to our account until the 22th of September of 2021:"
+        , "Recipient: Jonglieren in Freiburg e.V."
+        , "Bank: Sparkasse Freiburg Nördlicher Breisgau"
+        , "IBAN: DE26 6805 0101 0012 0917 91"
+        , "BIC: FRSPDE66XXX"
+        , "Amount: " <> totalPrice
+        , "Reference: " <> paymentReason
         , ""
         , "We're looking forward to meeting you at the festival!"
         , "Cheers!"

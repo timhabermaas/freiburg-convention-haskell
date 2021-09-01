@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Html
   ( registerPage
@@ -78,7 +79,7 @@ instance H.ToMarkup DT.Name where
 filteredParticipants
   :: [P.ExistingParticipant] -> P.Accommodation -> P.Stay -> Int
 filteredParticipants participants accommodation stay = length $ do
-  p@(P.Participant' _ _ (P.Ticket _ _ pStay _) _) <- participants
+  p@(P.Participant' _ _ _ (P.Ticket _ _ pStay _) _) <- participants
   guard $ pStay == stay
   guard $ P.participantAccommodation p == accommodation
   pure p
@@ -462,9 +463,9 @@ noSleepingMessage (GymSleepingLimitReached, EnoughTentSpots) =
 
 participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
-  row $ do
-    col 12 $ do
-      H.div ! A.class_ "participant" $ do
+  H.div ! A.class_ "participant" $ do
+    row $ do
+      col 12 $ do
         H.br
         H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
         H.div ! A.class_ "form-group" $ do
@@ -472,6 +473,7 @@ participantForm view currentIndex = do
           DH.inputText "name" view ! A.class_ "form-control"
           formErrorMessage "name" view
         dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
+        addressForm $ DV.subView "address" view
         row $ do
           col 6 $ do
             H.div ! A.class_ "form-group" $ do
@@ -498,12 +500,16 @@ jugglingRegisterForm view = do
       DH.inputText "botField" view ! A.class_ "form-control"
 
     formErrorMessage "participants" view
-    mapM_ (\(v, i) -> participantForm v i)
-      $     DV.listSubViews "participants" view
-      `zip` [1 ..]
+    let participantViews = DV.listSubViews "participants" view
+    H.div ! A.class_ "participants" $ do
+      mapM_ (\(v, i) -> participantForm v i)
+        $     participantViews
+        `zip` [1 ..]
+    let indicesList = T.intercalate "," $ T.pack <$> show <$> (\(x, _) -> x) <$> zip [0 :: Int ..] participantViews
+    H.input ! A.type_ "hidden" ! A.name "Registration.participants.indices" ! A.value (H.toValue indicesList)
 
     H.div $ do
-      H.a ! A.href "#" ! A.id "link" $ do
+      H.a ! A.href "#" ! A.id "link" ! A.data_ (H.toValue $ show $ length participantViews) $ do
         "Weitere Teilnehmer anmelden"
         H.span
           ! A.class_ "text-secondary"
@@ -524,19 +530,35 @@ jugglingRegisterForm view = do
         "Anmelden"
 
     H.script $ do
-      "var elements = document.getElementsByClassName('participant');\
-            \for (var i = 1; i < elements.length; i++) {\
-                \elements[i].classList.add('d-none');\
-            \}\
-            \var link = document.getElementById('link');\
-            \link.addEventListener('click', function(e){\
-                \e.preventDefault();\
-                \for (var i = 1; i < elements.length; i++) {\
-                \elements[i].classList.remove('d-none');\
-                \}\
-                \link.classList.add('d-none');\
-            \})\
-            \"
+      let code :: [String] =
+            [ "function replaceNumber(name, nextNumber) {"
+            , "  return name.replace(/\\.\\d+\\./, '.' + nextNumber + '.');"
+            , "}"
+            , "function replaceNumberInAttribute(e, attr, nextNumber) {"
+            , "  var value = e.getAttribute(attr);"
+            , "  e.setAttribute(attr, replaceNumber(value, nextNumber));"
+            , "};"
+            , "var link = document.getElementById('link');"
+            , "link.addEventListener('click', function(e){"
+            , "   e.preventDefault();"
+
+            , "   var nextId = parseInt(this.getAttribute('data'), 10);"
+            , "   var participants = document.querySelectorAll('.participant');"
+            , "   var lastForm = participants[participants.length - 1];"
+            , "   var newForm = lastForm.cloneNode(true);"
+            , "   newForm.querySelectorAll('input, select').forEach(function(e) { replaceNumberInAttribute(e, 'name', nextId); replaceNumberInAttribute(e, 'id', nextId); });"
+            , "   newForm.querySelectorAll('input').forEach(function(e) { e.value = ''; });"
+            , "   newForm.querySelectorAll('label').forEach(function(e) { replaceNumberInAttribute(e, 'for', nextId) });"
+            , "   var headline = newForm.querySelector('h4');"
+            , "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer';"
+            , "   lastForm.parentNode.insertBefore(newForm, null);"
+            , "   this.setAttribute('data', nextId + 1);"
+            , "   var indicesElement = document.querySelector(\"input[name='Registration.participants.indices']\");"
+            , "   indicesElement.value = Array.apply(null, Array(nextId + 1)).map(function (x, i) { return i; }).join(',');"
+            , "})"
+            , ""
+            ]
+      H.toHtml $ unlines code
 
 registerPage
   :: DV.View T.Text
@@ -545,12 +567,37 @@ registerPage
 registerPage view isOverLimit = layout $ do
   row $ do
     col 12 $ do
-      H.h1 "Anmeldung zur Freiburger Jonglierconvention 2020"
+      H.h1 "Anmeldung zur Freiburger Jonglierconvention 2021"
   row $ do
     col 12 $ do
       noSleepingMessage isOverLimit
       H.br
       jugglingRegisterForm view
+
+addressForm :: DV.View T.Text -> Html
+addressForm addressView = do
+  H.div ! A.class_ "form-group" $ do
+    row $ do
+      col 6 $ do
+        label "Straße" "Street" "" addressView
+        DH.inputText "street" (modifiedView addressView) ! A.class_ "form-control"
+        formErrorMessage "street" addressView
+  H.div ! A.class_ "form-group" $ do
+    row $ do
+      col 2 $ do
+        label "PLZ" "Postal Code" "" addressView
+        DH.inputText "postalCode" (modifiedView addressView) ! A.class_ "form-control"
+        formErrorMessage "postalCode" addressView
+      col 4 $ do
+        label "Stadt" "City" "" addressView
+        DH.inputText "city" (modifiedView addressView) ! A.class_ "form-control"
+        formErrorMessage "city" addressView
+  H.div ! A.class_ "form-group" $ do
+    row $ do
+      col 6 $ do
+        label "Land" "Country" "" addressView
+        DH.inputText "country" (modifiedView addressView) ! A.class_ "form-control"
+        formErrorMessage "country" addressView
 
 dateForm :: T.Text -> T.Text -> DV.View T.Text -> Html
 dateForm labelText englishLabelText dateView = do
@@ -644,7 +691,7 @@ participationPrintPage participants = layout $ do
       H.div ! A.class_ "fixed-header" $ do
         H.h3
           ! A.class_ "text-center"
-          $ "Anmeldeliste 21. Freiburger Jonglierfestival – 21. Mai bis 24. Mai 2020"
+          $ "Anmeldeliste 22. Freiburger Jonglierfestival – 24. September bis 26. September 2021"
   row $ do
     col 12 $ do
       H.table ! A.class_ "table table-bordered table-sm" $ do
@@ -694,7 +741,7 @@ participationPrintPage participants = layout $ do
       $ H.toHtml
       $ formatBirthday
       $ P.participantBirthday p
-    H.td mempty
+    H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
     H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
     H.td
       ! A.class_ "text-center"
