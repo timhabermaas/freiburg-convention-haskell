@@ -141,6 +141,15 @@ selectableTickets = filter isSelectable allTickets
   where
     isSelectable (Ticket _ _ _ _ s) = s
 
+-- NOTE: Never remove or change any entries in the following list. If you do
+-- so, a participant might've ordered a ticket for € 14, but the invoice shows
+-- € 18 at a later time leading to us rejecting their money transfer. Removing
+-- tickets is even worse since then we won't be able to associate participants
+-- with tickets at all and either crash or display no ticket.
+-- If you e.g. want to change the price of a ticket, add a new ticket (with a
+-- distinct ID) and make the ticket you want to "update" unselectable. The last
+-- boolean flag represents whether a ticket can be selected, so change this
+-- from `True` to `False`.
 allTickets :: [Ticket]
 allTickets =
     [ Ticket (Id 13) OlderThan12 LongStay (Price 45) False
