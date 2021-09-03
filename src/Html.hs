@@ -447,18 +447,23 @@ alert :: T.Text -> H.Html
 alert text = do
   H.div ! A.class_ "alert alert-danger" $ H.toHtml text
 
+info :: T.Text -> H.Html
+info text = do
+  H.div ! A.class_ "alert alert-primary" $ H.toHtml text
+
 noSleepingMessage
   :: LimitReached -> H.Html
 noSleepingMessage NoLimitReached = mempty
-noSleepingMessage CampingLimitReached =
-  mempty
+noSleepingMessage CampingLimitReached = mempty
 noSleepingMessage SleepingAtSideLimitReached =
-  alert
+  info
     "Leider sind schon alle Schlafplätze belegt. Du kannst dich aber trotzdem anmelden und vorbei kommen, solange du dir einen eigenen Schlafplatz organisierst."
 noSleepingMessage GymLimitReached =
   alert
     "Leider sind schon alle Schlafplätze in der Schlafhalle belegt. Du kannst dich aber trotzdem anmelden und entweder im Zelt schlafen oder dir einen eigenen Schlafplatz organisieren."
-noSleepingMessage OverallLimitReached = mempty
+noSleepingMessage OverallLimitReached =
+  alert
+    "Leider sind wir schon ausgebucht und können keine weiteren Teilnehmer*innen mehr aufnehmen. Wir bitten euch nicht spontan vorbeizukommen. Auf Grund der Corona-Verordnungen können wir keine weiteren Teilnehmer*innern zulassen und müssten euch wieder heimschicken."
 
 participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
@@ -526,7 +531,7 @@ jugglingRegisterForm view = do
       formErrorMessage "comment" view
 
     H.div ! A.class_ "form-group" $ do
-      bootstrapSingleCheckbox "covidTermsAccepted" "Du nimmst Impfpass und so mit" (modifiedView view)
+      bootstrapBooleanCheckbox "covidTermsAccepted" "Ich bestätige, dass alle Teilnehmer*innen bei Ankunft entweder geimpft, genesen oder getestet sind (3G) und die entsprechenden Nachweise vorlegen können." (modifiedView view)
       formErrorMessage "covidTermsAccepted" view
 
     H.div ! A.class_ "form-group" $ do
@@ -573,11 +578,17 @@ registerPage view isOverLimit = layout $ do
     colMd 12 $ do
       H.h1 "Anmeldung zur Freiburger Jonglierconvention 2021"
       H.h4 $ H.small ! A.class_ "text-muted" $ "24.09.2021 – 26.09.2021"
+
   row $ do
     colLg 6 $ do
       noSleepingMessage isOverLimit
-      H.br
-      jugglingRegisterForm view
+
+      if isOverLimit == OverallLimitReached
+        then
+          mempty
+        else do
+          H.br
+          jugglingRegisterForm view
 
 addressForm :: DV.View T.Text -> Html
 addressForm addressView = do
@@ -616,8 +627,8 @@ dateForm labelText englishLabelText dateView = do
         formErrorMessage "" dateView
 
 
-bootstrapSingleCheckbox :: T.Text -> T.Text -> DV.View Html -> Html
-bootstrapSingleCheckbox ref text view =
+bootstrapBooleanCheckbox :: T.Text -> T.Text -> DV.View Html -> Html
+bootstrapBooleanCheckbox ref text view =
   let checked = DV.fieldInputBool ref view
       ref' :: T.Text
       ref' = DV.absoluteRef ref view
