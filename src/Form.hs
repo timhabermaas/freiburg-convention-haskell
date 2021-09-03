@@ -42,7 +42,7 @@ newRegisterForm _ def = checkForBot $ fmap fst $
                            <*> pure ()
                            <*> pure ()
                            <*> pure ())
-                   <*> "covidTermsAccepted" DF..: (mustBeChecked (DF.bool (Just False)))
+                   <*> "covidTermsAccepted" DF..: mustBeChecked (DF.bool (Just False))
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail

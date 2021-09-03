@@ -97,7 +97,7 @@ participationListPage participants' = layout $ do
   let participants = fmap fst participants'
   row $ do
     col 12 $ do
-      H.h1 "Teilnehmer"
+      H.h1 "Teilnehmer*innen"
   rowWithSpace $ do
     col 12 $ do
       H.ul ! A.class_ "nav nav-pills" $ do
@@ -107,7 +107,7 @@ participationListPage participants' = layout $ do
           H.a
             ! A.class_ "nav-link active"
             ! A.href "/admin/participants"
-            $ "Teilnehmer"
+            $ "Teilnehmer*innen"
   row $ do
     col 12 $ do
       H.table ! A.class_ "table" $ do
@@ -211,7 +211,7 @@ registrationListPage' registrations
             H.a
               ! A.class_ "nav-link"
               ! A.href "/admin/participants"
-              $ "Teilnehmer"
+              $ "Teilnehmer*innen"
     row $ do
       col 12 $ do
         H.div ! A.class_ "alert alert-primary" $ do
@@ -229,7 +229,7 @@ registrationListPage' registrations
           H.thead $ do
             H.tr $ do
               H.th "E-Mail"
-              H.th "Anzahl Teilnehmer"
+              H.th "Anzahl Teilnehmer*innen"
               H.th "Anmerkungen"
               H.th "Angemeldet am"
               H.th "Verwendungszweck"
@@ -467,7 +467,7 @@ participantForm view currentIndex = do
     row $ do
       col 12 $ do
         H.br
-        H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer"
+        H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer*in"
         H.div ! A.class_ "form-group" $ do
           label "Name" "Full Name" "name" view
           DH.inputText "name" view ! A.class_ "form-control"
@@ -510,7 +510,7 @@ jugglingRegisterForm view = do
 
     H.div $ do
       H.a ! A.href "#" ! A.id "link" ! A.data_ (H.toValue $ show $ length participantViews) $ do
-        "Weitere Teilnehmer anmelden"
+        "Weitere Teilnehmer*innen anmelden"
         H.span
           ! A.class_ "text-secondary"
           $ " (Register additional participants)"
@@ -554,7 +554,7 @@ jugglingRegisterForm view = do
             , "   newForm.querySelectorAll('input').forEach(function(e) { e.value = ''; });"
             , "   newForm.querySelectorAll('label').forEach(function(e) { replaceNumberInAttribute(e, 'for', nextId) });"
             , "   var headline = newForm.querySelector('h4');"
-            , "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer';"
+            , "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer*in';"
             , "   lastForm.parentNode.insertBefore(newForm, null);"
             , "   this.setAttribute('data', nextId + 1);"
             , "   var indicesElement = document.querySelector(\"input[name='Registration.participants.indices']\");"
