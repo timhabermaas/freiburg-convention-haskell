@@ -103,10 +103,10 @@ instance FromField Sleepover where
     fromField f bs = do
         value <- fromField f bs
         case value :: T.Text of
-            "none" -> return NoNights
-            "n/a" -> return CouldntSelect
-            "camping" -> return Camping
-            "gym" -> return GymSleeping
+            "none" -> pure NoNights
+            "n/a" -> pure CouldntSelect
+            "camping" -> pure Camping
+            "gym" -> pure GymSleeping
             _ -> fail "sleepover not of expected value"
 
 instance FromRow DbParticipant where

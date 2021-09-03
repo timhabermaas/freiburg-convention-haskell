@@ -18,6 +18,7 @@ import qualified Domain.Participant as Domain
 import qualified Domain.SharedTypes as SharedTypes
 import Prelude hiding (id)
 import qualified Prelude as Prelude
+import Data.Maybe (catMaybes)
 
 data BotCheckResult a = IsBot | IsHuman a deriving Show
 
@@ -32,12 +33,12 @@ maybeHuman :: BotCheckResult a -> Maybe a
 maybeHuman IsBot = Nothing
 maybeHuman (IsHuman x) = Just x
 
-newRegisterForm :: Monad m => (GymSleepingLimitReached, CampingSleepingLimitReached) -> DF.Formlet T.Text m (BotCheckResult Domain.NewRegistration)
-newRegisterForm _ def = checkForBot $ fmap fst $
+newRegisterForm :: Monad m => LimitReached -> DF.Formlet T.Text m (BotCheckResult Domain.NewRegistration)
+newRegisterForm limitReached def = checkForBot $ fmap fst $
     (,) <$>
       (Domain.Registration <$> pure ()
                            <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                           <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf participantForm (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
+                           <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf (participantForm limitReached) (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
                            <*> "comment" DF..: optionalText
                            <*> pure ()
                            <*> pure ()
@@ -80,12 +81,12 @@ multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel)
     unwrapElement otherText f Nothing = f otherText
 
 
-participantForm :: Monad m => DF.Formlet T.Text m Domain.NewParticipant
-participantForm _def =
+participantForm :: Monad m => LimitReached -> DF.Formlet T.Text m Domain.NewParticipant
+participantForm limitReached _def =
     buildParticipant <$> "name" DF..: mustBePresent (DF.text Nothing)
                      <*> "birthday" DF..: birthdayFields
                      <*> "ticket" DF..: ticketForm Domain.jugglerTicketChoices
-                     <*> "accommodation" DF..: sleepingForm (Just Domain.Gym)
+                     <*> "accommodation" DF..: sleepingForm limitReached (Just Domain.Gym)
                      <*> "address" DF..: addressForm Nothing
   where
     buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.Address -> Domain.NewParticipant
@@ -98,15 +99,18 @@ addressForm _def =
                  <*> "city" DF..: mustBePresent (DF.text Nothing)
                  <*> "country" DF..: mustBePresent (DF.text Nothing)
 
-sleepingForm :: Monad m => DF.Formlet T.Text m Domain.Accommodation
-sleepingForm = DF.choice allChoices
+sleepingForm :: Monad m => LimitReached -> DF.Formlet T.Text m Domain.Accommodation
+sleepingForm limitReached = DF.choice (catMaybes [gymChoice limitReached, campingChoice limitReached, selfOrganizedChoice limitReached])
   where
-    allChoices :: [(Domain.Accommodation, T.Text)]
-    allChoices =
-        [ (Domain.Gym, "Schlafhalle (gym)")
-        , (Domain.Camping, "Zelt neben der Halle (tent)")
-        , (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
-        ]
+    gymChoice GymLimitReached = Nothing
+    gymChoice SleepingAtSideLimitReached = Nothing
+    gymChoice OverallLimitReached = Nothing
+    gymChoice _ = Just (Domain.Gym, "Schlafhalle (gym)")
+    campingChoice CampingLimitReached = Nothing
+    campingChoice SleepingAtSideLimitReached = Nothing
+    campingChoice OverallLimitReached = Nothing
+    campingChoice _ = Just (Domain.Camping, "Zelt neben der Halle (tent)")
+    selfOrganizedChoice _ =  Just (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
 ticketForm availableTickets = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)

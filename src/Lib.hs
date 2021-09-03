@@ -30,7 +30,6 @@ import qualified Text.Digestive.Types as DF
 import qualified Text.Digestive.View as DF
 import qualified Data.Csv as Csv
 import qualified Data.Vector as V
-import Data.Time.Calendar (Day)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Time.Format as TimeFormat
 
@@ -43,7 +42,6 @@ import Types
 import qualified Domain.Registration as D
 import qualified Domain.Participant as P
 import qualified Domain.SharedTypes as DT
-import Util
 
 data CSV
 
@@ -71,16 +69,17 @@ data Config = Config
     { configMailerHandle :: Mailer.Handle
     , configDbHandle :: Db.Handle
     , configAdminPassword :: AdminPassword
-    , configSleepingLimits :: (GymSleepingLimit, CampingSleepingLimit)
+    , configLimits :: ParticipantLimits
     }
 
-startApp :: String -> Int -> Int -> Int -> AdminPassword -> Maybe (String, String) -> IO ()
-startApp dbUrl port participationLimit campingLimit pw maybeAwsKey = do
+startApp :: String -> Int -> Int -> Int -> Int -> AdminPassword -> Maybe (String, String) -> IO ()
+startApp dbUrl port overallLimit gymSleepingLimit campingLimit pw maybeAwsKey = do
     let mailerConfig = maybe Mailer.PrinterConfig Mailer.AwsSesConfig maybeAwsKey
     Mailer.withConfig mailerConfig $ \mailHandle -> do
         Db.withConfig dbUrl $ \db -> do
             Db.migrate db
-            let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configSleepingLimits = (GymSleepingLimit participationLimit, CampingSleepingLimit campingLimit) }
+            let limits = ParticipantLimits (OverallLimit overallLimit) (GymSleepingLimit gymSleepingLimit) (CampingSleepingLimit campingLimit)
+            let config = Config { configMailerHandle = mailHandle, configDbHandle = db, configAdminPassword = pw, configLimits = limits }
             runSettings (setOnException exceptionHandler $ setPort port defaultSettings) $ logStdoutDev $ app config
   where
     exceptionHandler _ ex = putStrLn $ show ex
@@ -104,12 +103,12 @@ app Config{..} =
     serveWithContext
         api
         (authServerContext configAdminPassword)
-        (server configDbHandle configMailerHandle configSleepingLimits)
+        (server configDbHandle configMailerHandle configLimits)
 
 api :: Proxy API
 api = Proxy
 
-server :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Server API
+server :: Db.Handle -> Mailer.Handle -> ParticipantLimits -> Server API
 server db mailerHandle limits =
          registerHandler db limits
     :<|> postRegisterHandler db mailerHandle limits
@@ -118,25 +117,22 @@ server db mailerHandle limits =
     :<|> registrationsCsvHandler db
     :<|> deleteRegistrationsHandler db
     :<|> payRegistrationsHandler db
-    :<|> listParticipantsHandler db
+    :<|> listParticipantsHandler db limits
     :<|> printParticipantsHandler db
 
-isOverLimit :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> IO (GymSleepingLimitReached, CampingSleepingLimitReached)
-isOverLimit handle (GymSleepingLimit gymLimit, CampingSleepingLimit campingLimit) = do
+isOverLimit :: Db.Handle -> ParticipantLimits -> IO LimitReached
+isOverLimit handle (ParticipantLimits (OverallLimit overallLimit) (GymSleepingLimit gymLimit) (CampingSleepingLimit campingLimit)) = do
     sleepovers <- liftIO $ fmap P.participantAccommodation <$> Db.allParticipants handle
-    let gymLimitReached =
-            if P.gymSleepCount sleepovers >= gymLimit then
-                GymSleepingLimitReached
-            else
-                EnoughGymSleepingSpots
-    let campingLimitReached =
-            if P.campingSleepCount sleepovers >= campingLimit then
-                CampingSleepingLimitReached
-            else
-                EnoughTentSpots
-    pure (gymLimitReached, campingLimitReached)
+    if length sleepovers >= overallLimit then
+      pure OverallLimitReached
+    else
+      case (P.gymSleepCount sleepovers >= gymLimit, P.campingSleepCount sleepovers >= campingLimit) of
+        (True, True) -> pure SleepingAtSideLimitReached
+        (False, True) -> pure CampingLimitReached
+        (True, False) -> pure GymLimitReached
+        (False, False) -> pure NoLimitReached
 
-registerHandler :: Db.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> Handler Page.Html
+registerHandler :: Db.Handle -> ParticipantLimits -> Handler Page.Html
 registerHandler conn limits = do
     overLimit <- liftIO $ isOverLimit conn limits
     view <- DF.getForm "Registration" $ Form.newRegisterForm overLimit Nothing
@@ -197,13 +193,10 @@ instance Csv.ToField DT.PhoneNumber where
 instance Csv.ToField P.Accommodation where
     toField a = Csv.toField $ show a
 
-iso8601Day :: Day -> String
-iso8601Day d = TimeFormat.formatTime TimeFormat.defaultTimeLocale (TimeFormat.iso8601DateFormat Nothing) d
-
 iso8601 :: UTCTime -> String
 iso8601 = TimeFormat.formatTime TimeFormat.defaultTimeLocale "%FT%T%QZ"
 
-postRegisterHandler :: Db.Handle -> Mailer.Handle -> (GymSleepingLimit, CampingSleepingLimit) -> [(T.Text, T.Text)] -> Handler Page.Html
+postRegisterHandler :: Db.Handle -> Mailer.Handle -> ParticipantLimits -> [(T.Text, T.Text)] -> Handler Page.Html
 postRegisterHandler conn mailerHandle limits body = do
     overLimit <- liftIO $ isOverLimit conn limits
     r <- DF.postForm "Registration" (Form.newRegisterForm overLimit Nothing) $ servantPathEnv body
@@ -247,11 +240,11 @@ printRegistrationsHandler conn user = do
     regs <- liftIO $ Db.allRegistrationsOrderedByName conn
     pure $ Page.registrationPrintPage regs
 
-listParticipantsHandler :: Db.Handle -> User -> Handler Page.Html
-listParticipantsHandler  conn user = do
+listParticipantsHandler :: Db.Handle -> ParticipantLimits -> User -> Handler Page.Html
+listParticipantsHandler conn participantLimits user = do
     requireAdmin user
     participants <- liftIO $ Db.allParticipantsWithRegistration conn
-    pure $ Page.participationListPage participants
+    pure $ Page.participationListPage participants participantLimits
 
 
 successHandler :: Handler Page.Html
@@ -268,7 +261,7 @@ servantPathEnv body _ = pure env
     lookupParam :: DF.Path -> [T.Text]
     lookupParam p = snd <$> filter (\(k, _) -> k == DF.fromPath p) body
     env :: (Monad m) => DF.Path -> m [DF.FormInput]
-    env path = return (DF.TextInput <$> lookupParam path)
+    env path = pure (DF.TextInput <$> lookupParam path)
 
 data Language = German | English
 

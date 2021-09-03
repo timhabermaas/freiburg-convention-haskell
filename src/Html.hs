@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GADTs                     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Html
   ( registerPage
@@ -92,8 +93,8 @@ filteredParticipants' participants accommodation = length $ do
 
 
 participationListPage
-  :: [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
-participationListPage participants' = layout $ do
+  :: [(P.ExistingParticipant, R.ExistingRegistration)] -> ParticipantLimits -> H.Html
+participationListPage participants' ParticipantLimits{..} = layout $ do
   let participants = fmap fst participants'
   row $ do
     col 12 $ do
@@ -127,11 +128,9 @@ participationListPage participants' = layout $ do
               participants
               P.Gym
               P.ShortStay
-            H.td
-              ! A.class_ "text-right"
-              $ H.strong
-              $ H.toHtml
-              $ filteredParticipants' participants P.Gym
+            H.td ! A.class_ "text-right" $ do
+                H.strong $ H.toHtml $ filteredParticipants' participants P.Gym
+                H.small $ H.toHtml $ " (max " <> show @Int (coerce gymSleeping) <> ")"
           H.tr $ do
             H.th $ "Camping"
             H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
@@ -142,11 +141,9 @@ participationListPage participants' = layout $ do
               participants
               P.Camping
               P.ShortStay
-            H.td
-              ! A.class_ "text-right"
-              $ H.strong
-              $ H.toHtml
-              $ filteredParticipants' participants P.Camping
+            H.td ! A.class_ "text-right" $ do
+                H.strong $ H.toHtml $ filteredParticipants' participants P.Camping
+                H.small $ H.toHtml $ " (max " <> show @Int (coerce campingSleeping) <> ")"
           H.tr $ do
             H.th $ "Woanders"
             H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
@@ -166,8 +163,9 @@ participationListPage participants' = layout $ do
             H.td mempty
             H.td mempty
             H.td mempty
-            H.td ! A.class_ "text-right" $ H.strong $ H.toHtml $ length
-              participants
+            H.td ! A.class_ "text-right" $ do
+                H.strong $ H.toHtml $ length participants
+                H.small $ H.toHtml $ " (max " <> show @Int (coerce overallLimit) <> ")"
   rowWithSpace $ do
     col 12 $ do
       H.a ! A.href "/admin/participants/print" $ "Druckansicht"
@@ -450,16 +448,17 @@ alert text = do
   H.div ! A.class_ "alert alert-danger" $ H.toHtml text
 
 noSleepingMessage
-  :: (GymSleepingLimitReached, CampingSleepingLimitReached) -> H.Html
-noSleepingMessage (EnoughGymSleepingSpots, EnoughTentSpots) = mempty
-noSleepingMessage (EnoughGymSleepingSpots, CampingSleepingLimitReached) =
+  :: LimitReached -> H.Html
+noSleepingMessage NoLimitReached = mempty
+noSleepingMessage CampingLimitReached =
   mempty
-noSleepingMessage (GymSleepingLimitReached, CampingSleepingLimitReached) =
+noSleepingMessage SleepingAtSideLimitReached =
   alert
     "Leider sind schon alle Schlafplätze belegt. Du kannst dich aber trotzdem anmelden und vorbei kommen, solange du dir einen eigenen Schlafplatz organisierst."
-noSleepingMessage (GymSleepingLimitReached, EnoughTentSpots) =
+noSleepingMessage GymLimitReached =
   alert
     "Leider sind schon alle Schlafplätze in der Schlafhalle belegt. Du kannst dich aber trotzdem anmelden und entweder im Zelt schlafen oder dir einen eigenen Schlafplatz organisieren."
+noSleepingMessage OverallLimitReached = mempty
 
 participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
@@ -566,7 +565,7 @@ jugglingRegisterForm view = do
 
 registerPage
   :: DV.View T.Text
-  -> (GymSleepingLimitReached, CampingSleepingLimitReached)
+  -> LimitReached
   -> H.Html
 registerPage view isOverLimit = layout $ do
   row $ do

@@ -15,7 +15,7 @@ $ stack build
 
 ```sh
 $ createdb freiburg_convention
-$ env PORT=8080 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg_convention' stack run
+$ env PORT=8080 OVERALL_LIMIT=130 SLEEPING_LIMIT=120 CAMPING_LIMIT=50 ADMIN_PASSWORD=admin DATABASE_URL='postgres://localhost/freiburg_convention' stack run
 ```
 
 ### Environment variables
@@ -25,6 +25,7 @@ The following environment variables need to be set:
 * `DATABASE_URL` (string): A PostgreSQL database connection string
 * `PORT` (number): The port the web server should run on
 * `ADMIN_PASSWORD` (string): The password for the _HTTP basic authentication_ protected admin area
+* `OVERALL_LIMIT` (number): The maximum number of people allowed at the festival
 * `SLEEPING_LIMIT` (number): The maximum number of people allowed to sleep in the gym/class rooms
 * `CAMPING_LIMIT` (number): The maximum number of people allowed to camp
 

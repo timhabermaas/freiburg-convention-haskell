@@ -40,7 +40,7 @@ spec
   -> Spec
 spec dbHandle mailHandle readMailList pw = do
   let limit = (GymSleepingLimit 2, CampingSleepingLimit 0)
-  with (return $ app (Config mailHandle dbHandle pw limit)) $ do
+  with (pure $ app (Config mailHandle dbHandle pw limit)) $ do
     describe "GET /" $ do
       it "responds with 200" $ do
         get "/" `shouldRespondWith` 200
