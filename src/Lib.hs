@@ -234,12 +234,6 @@ printParticipantsHandler conn user = do
     pure $ Page.participationPrintPage participants
 
 
-printRegistrationsHandler :: Db.Handle -> User -> Handler Page.Html
-printRegistrationsHandler conn user = do
-    requireAdmin user
-    regs <- liftIO $ Db.allRegistrationsOrderedByName conn
-    pure $ Page.registrationPrintPage regs
-
 listParticipantsHandler :: Db.Handle -> ParticipantLimits -> User -> Handler Page.Html
 listParticipantsHandler conn participantLimits user = do
     requireAdmin user

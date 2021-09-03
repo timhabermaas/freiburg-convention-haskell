@@ -12,8 +12,6 @@ module IO.Db
     , allParticipantsWithRegistration
     , allParticipants
     , allRegistrations'
-    , allRegistrationsOrderedByName
-    , DbParticipant(..)
     , DbId(..)
     , withConfig
     , Handle
@@ -172,11 +170,6 @@ allParticipants :: Handle -> IO [P.ExistingParticipant]
 allParticipants (Handle pool) = do
     Pool.withResource pool $ \conn ->
         PSQL.query_ conn "SELECT id, type, name, birthday, ticketId, street, postalCode, city, country, accommodation FROM participants"
-
-allRegistrationsOrderedByName :: Handle -> IO [DbParticipant]
-allRegistrationsOrderedByName (Handle pool) = do
-    Pool.withResource pool $ \conn -> do
-        PSQL.query_ conn "SELECT id, name, birthday, street, postalCode, city, country, registeredAt, sleepovers, comment, email FROM participants ORDER BY name"
 
 
 migrate :: Handle -> IO ()

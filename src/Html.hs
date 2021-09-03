@@ -7,9 +7,7 @@
 module Html
   ( registerPage
   , successPage
-  , registrationListPage
   , registrationListPage'
-  , registrationPrintPage
   , participationPrintPage
   , participationListPage
   , Html
@@ -33,14 +31,12 @@ import           Data.Time.LocalTime            ( utcToZonedTime
                                                 , hoursToTimeZone
                                                 , ZonedTime
                                                 )
-import           Data.Maybe                     ( catMaybes
-                                                , fromMaybe
+import           Data.Maybe                     ( fromMaybe
                                                 )
 import           Prelude                 hiding ( id )
 import           Data.Coerce                    ( coerce )
 import           Control.Monad                  ( guard )
 
-import qualified IO.Db                         as Db
 import           Types
 import           Util
 import qualified Domain.Registration           as R
@@ -176,10 +172,11 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
           H.tr $ do
             H.th "Name"
             H.th "Geburtsdatum"
+            H.th "Postadresse"
             H.th "Ticket"
             H.th "Schlafgelegenheit"
             H.th "Bezahlt?"
-            H.th "Kommentar"
+            H.th "Mitteilung"
         H.tbody $ mapM_ participantRow participants'
  where
   participantRow :: (P.ExistingParticipant, R.ExistingRegistration) -> H.Html
@@ -187,6 +184,7 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
     H.tr $ do
       H.td $ H.toHtml $ P.participantName p
       H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
+      H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
       H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
       H.td $ H.toHtml $ show $ P.participantAccommodation p
       H.td $ H.toHtml $ paidToText paidStatus
@@ -228,7 +226,7 @@ registrationListPage' registrations
             H.tr $ do
               H.th "E-Mail"
               H.th "Anzahl Teilnehmer*innen"
-              H.th "Anmerkungen"
+              H.th "Mitteilung"
               H.th "Angemeldet am"
               H.th "Verwendungszweck"
               H.th "Summe Tickets"
@@ -294,137 +292,6 @@ registrationListPage' registrations
                       ! A.value "Bezahlt"
   idToText (DT.Id i) = T.pack $ show i
 
-registrationListPage
-  :: [Db.DbParticipant] -> (GymSleepingLimit, CampingSleepingLimit) -> H.Html
-registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSleepingLimit campingLimit)
-  = layout $ do
-    let sleepovers = fmap Db.dbParticipantSleepovers participants
-    row $ do
-      colMd 12 $ do
-        H.h1 "Anmeldungen"
-    row $ do
-      colMd 12 $ do
-        H.div ! A.class_ "alert alert-primary" $ do
-          H.ul $ do
-            H.li $ do
-              H.strong $ do
-                H.toHtml $ gymSleepCount sleepovers
-                " von "
-                H.toHtml $ gymSleepingLimit
-              " Übernachtungsplätze in Klassenzimmern belegt"
-            H.li $ do
-              H.strong $ do
-                H.toHtml $ campingSleepCount sleepovers
-                " von "
-                H.toHtml $ campingLimit
-              " Campingspots belegt"
-            H.li $ do
-              H.strong $ H.toHtml $ length participants
-              " Anmeldungen"
-
-    row $ do
-      colMd 12 $ do
-        H.table ! A.class_ "table" $ do
-          H.thead $ do
-            H.tr $ do
-              H.th "Name"
-              H.th "Geburtsdatum"
-              H.th "Adresse"
-              H.th "Übernachtung" ! A.colspan "2"
-              H.th "Angemeldet am"
-              H.th "Anmerkungen"
-              H.th "E-Mail"
-              H.th "Aktionen"
-            H.tr $ do
-              H.th ""
-              H.th ""
-              H.th ""
-              H.th ! A.class_ "text-center" $ "Klassenzimmer"
-              H.th ! A.class_ "text-center" $ "Zelt"
-              H.th ""
-              H.th ""
-              H.th ""
-              H.th ""
-          H.tbody $ mapM_ participantRow participants
-          H.tfoot $ do
-            H.tr $ do
-              H.th $ H.toHtml $ length participants
-              H.th ""
-              H.th ""
-              H.th ! A.class_ "text-right" $ H.toHtml $ gymSleepCount sleepovers
-              H.th ! A.class_ "text-right" $ H.toHtml $ campingSleepCount
-                sleepovers
-              H.th ""
-              H.th ""
-              H.th ""
-              H.th ""
-    row $ do
-      colMd 3 $ do
-        H.a ! A.href "/registrations.csv" $ "Download als .csv"
-      colMd 3 $ do
-        H.a ! A.href "/registrations/print" $ "Print stuff"
-    H.br
-    row $ do
-      colMd 12 $ do
-        H.h3 "E-Mail-Adressen der Minderjährigen"
-        H.p $ do
-          H.toHtml
-            $ T.intercalate ", "
-            $ catMaybes
-            $ fmap Db.dbParticipantEmail
-            $ filter (requiresParentSignature . Db.dbParticipantBirthday)
-                     participants
- where
-  participantRow p@Db.DbParticipant {..} = H.tr $ do
-    H.td $ H.toHtml dbParticipantName
-    H.td $ H.toHtml $ formatDay dbParticipantBirthday
-    H.td $ H.toHtml $ formatAddress p
-    H.td ! A.class_ "text-center" $ gym dbParticipantSleepovers
-    H.td ! A.class_ "text-center" $ tent dbParticipantSleepovers
-    H.td
-      $ H.toHtml
-      $ formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr"
-      $ utcToBerlin dbParticipantRegisteredAt
-    H.td $ H.toHtml $ fromMaybe "" dbParticipantComment
-    H.td $ H.toHtml $ fromMaybe "" dbParticipantEmail
-    H.td $ do
-      H.form
-        ! A.action
-            (  H.toValue
-            $  "/registrations/"
-            <> idToText dbParticipantId
-            <> "/delete"
-            )
-        ! A.method "post"
-        $ do
-            H.input
-              ! A.onclick
-                  (  H.toValue
-                  $  "return confirm('Willst du wirklich ' + '"
-                  <> dbParticipantName
-                  <> "' + ' ausladen?');"
-                  )
-              ! A.class_ "btn btn-danger"
-              ! A.type_ "submit"
-              ! A.name "delete"
-              ! A.value "Löschen"
-  idToText (Db.DbId i) = show i
-  gym GymSleeping = "X"
-  gym _           = ""
-  tent Camping = "X"
-  tent _       = ""
-
-formatAddress :: Db.DbParticipant -> T.Text
-formatAddress Db.DbParticipant {..} =
-  dbParticipantStreet
-    <> ", "
-    <> dbParticipantPostalCode
-    <> " "
-    <> dbParticipantCity
-    <> " ("
-    <> dbParticipantCountry
-    <> ")"
-
 utcToBerlin :: UTCTime -> ZonedTime
 utcToBerlin = utcToZonedTime (hoursToTimeZone 2)
 
@@ -435,9 +302,7 @@ successPage = layout $ do
       H.h1 "Danke für deine Anmeldung!" ! A.class_ "text-center"
       H.p ! A.class_ "text-center" $ do
         "Du solltest in Kürze eine E-Mail von uns erhalten. Falls nicht, melde dich bitte unter "
-        H.a
-          ! A.href "mailto:orga@jonglieren-in-freiburg.de"
-          $ "orga@jonglieren-in-freiburg.de"
+        mailLink "orga@jonglieren-in-freiburg.de" "orga@jonglieren-in-freiburg.de"
         "."
 
 modifiedView :: DV.View T.Text -> DV.View H.Html
@@ -740,7 +605,6 @@ participationPrintPage participants = layout $ do
             H.th ""
             H.th "Name"
             H.th "Geburtsdatum"
-            H.th "Post-Adresse"
             H.th "Ticket"
             H.th "Wo?"
             H.th "Bezahlung"
@@ -770,7 +634,6 @@ participationPrintPage participants = layout $ do
       $ H.toHtml
       $ formatBirthday
       $ P.participantBirthday p
-    H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
     H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
     H.td
       ! A.class_ "text-center"
@@ -782,71 +645,6 @@ participationPrintPage participants = layout $ do
   sleepOverShort P.Camping       = "Camp"
   sleepOverShort P.SelfOrganized = "—"
   sleepOverShort P.Gym           = "Halle"
-
-registrationPrintPage :: [Db.DbParticipant] -> H.Html
-registrationPrintPage participants = layout $ do
-  row $ do
-    colMd 12 $ do
-      H.div ! A.class_ "fixed-header" $ do
-        H.h1 ! A.class_ "text-center" $ "Schülerliste"
-  row $ do
-    colMd 12 $ do
-      H.table ! A.class_ "table table-bordered table-sm" $ do
-        H.thead $ do
-          H.tr $ do
-            H.th
-              ! A.colspan "10"
-              $ "Mit meiner Unterschrift nehme ich zur Kenntnis, dass die Veranstalter des 15. Pfälzer Jongliertreffens (12. - 14.10.2018) keine Haftung für Diebstahl, Sach- oder Personenschäden übernehmen können."
-          H.tr $ do
-            H.th ""
-            H.th "Name"
-            H.th "Geburtsdatum"
-            H.th "Adresse"
-            H.th "Wo?"
-            H.th ! A.style "width: 30px" $ "Fr"
-            H.th ! A.style "width: 30px" $ "Sa"
-            H.th ! A.style "width: 30px" $ "So"
-            H.th "Kosten"
-            H.th "Unterschrift"
-        H.tbody $ do
-          mapM_ participantRow (zip [(1 :: Int) ..] participants)
-          mapM_ emptyRow
-                [(length participants + 1) .. (length participants + 150)]
-
- where
-  emptyRow n = H.tr $ do
-    H.td ! A.class_ "text-right" $ H.toHtml $ show n
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-  participantRow (n, p@Db.DbParticipant {..}) = H.tr $ do
-    H.td ! A.class_ "text-right" $ H.toHtml $ show n
-    H.td $ H.toHtml dbParticipantName
-    H.td
-      !? ( requiresParentSignature dbParticipantBirthday
-         , A.class_ "font-weight-bold"
-         )
-      !  A.style "width: 100px"
-      $  H.toHtml
-      $  formatDay dbParticipantBirthday
-    H.td ! A.style "width: 300px" $ H.toHtml $ formatAddress p
-    H.td ! A.class_ "text-center" ! A.style "width: 40px" $ sleepOverShort
-      dbParticipantSleepovers
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td $ mempty
-    H.td $ mempty
-  sleepOverShort Camping       = "Z"
-  sleepOverShort NoNights      = ""
-  sleepOverShort GymSleeping   = "K"
-  sleepOverShort CouldntSelect = ""
 
 
 row :: Html -> Html

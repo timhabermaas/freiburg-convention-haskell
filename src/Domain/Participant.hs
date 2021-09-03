@@ -57,7 +57,7 @@ addressIsEmpty (Address street postalCode city country) = street == "" || postal
 
 formatAddress :: Address -> T.Text
 formatAddress Address{..}
-  = T.intercalate ", " [addressStreet, addressPostalCode <> " " <> addressCity, addressCountry]
+  = T.intercalate ", " [addressStreet, addressPostalCode <> " " <> addressCity, "(" <> addressCountry <> ")"]
 
 data Accommodation = Gym | Camping | SelfOrganized deriving (Show, Eq)
 
@@ -83,7 +83,13 @@ participantAddress :: Participant' status -> Address
 participantAddress (Participant' _ _ adr _ _) = adr
 
 data Participant' status
-    = Participant' (MaybePersisted status Id) PersonalInformation Address Ticket Accommodation
+    = Participant'
+    { pId :: (MaybePersisted status Id)
+    , pPersonalInformation :: PersonalInformation
+    , pAddress :: Address
+    , pTicket :: Ticket
+    , pAccommodation :: Accommodation
+    }
 
 type NewParticipant = Participant' 'New
 type ExistingParticipant = Participant' 'Persisted
