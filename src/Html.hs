@@ -97,10 +97,10 @@ participationListPage
 participationListPage participants' ParticipantLimits{..} = layout $ do
   let participants = fmap fst participants'
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.h1 "Teilnehmer*innen"
   rowWithSpace $ do
-    col 12 $ do
+    colMd 12 $ do
       H.ul ! A.class_ "nav nav-pills" $ do
         H.li ! A.class_ "nav-item" $ do
           H.a ! A.class_ "nav-link" ! A.href "/admin" $ "Anmeldungen"
@@ -110,7 +110,7 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
             ! A.href "/admin/participants"
             $ "Teilnehmer*innen"
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.table ! A.class_ "table" $ do
         H.thead $ do
           H.th mempty
@@ -167,10 +167,10 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
                 H.strong $ H.toHtml $ length participants
                 H.small $ H.toHtml $ " (max " <> show @Int (coerce overallLimit) <> ")"
   rowWithSpace $ do
-    col 12 $ do
+    colMd 12 $ do
       H.a ! A.href "/admin/participants/print" $ "Druckansicht"
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.table ! A.class_ "table" $ do
         H.thead $ do
           H.tr $ do
@@ -198,10 +198,10 @@ registrationListPage'
 registrationListPage' registrations
   = layout $ do
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.h1 "Anmeldungen"
     rowWithSpace $ do
-      col 12 $ do
+      colMd 12 $ do
         H.ul ! A.class_ "nav nav-pills" $ do
           H.li ! A.class_ "nav-item" $ do
             H.a ! A.class_ "nav-link active" ! A.href "/admin" $ "Anmeldungen"
@@ -211,18 +211,18 @@ registrationListPage' registrations
               ! A.href "/admin/participants"
               $ "Teilnehmer*innen"
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.div ! A.class_ "alert alert-primary" $ do
           H.ul $ do
             H.li $ do
               H.strong $ H.toHtml $ length registrations
               " Anmeldungen"
     rowWithSpace $ do
-      col 12 $ do
+      colMd 12 $ do
         H.a ! A.href "/admin/registrations.csv" $ "CSV-Export"
 
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.table ! A.class_ "table" $ do
           H.thead $ do
             H.tr $ do
@@ -236,9 +236,9 @@ registrationListPage' registrations
               H.th "Aktionen"
           H.tbody $ mapM_ registrationRow registrations
     {-row $ do
-        col 3 $ do
+        colMd 3 $ do
             H.a ! A.href "/registrations.csv" $ "Download als .csv"
-        col 3 $ do
+        colMd 3 $ do
             H.a ! A.href "/registrations/print" $ "Print stuff"
         -}
 
@@ -262,7 +262,7 @@ registrationListPage' registrations
     H.td $ if paidStatus == DT.Paid then "✓" else "✘"
     H.td $ do
       row $ do
-        col 6 $ do
+        colMd 6 $ do
           H.form
             ! A.action
                 (H.toValue $ "/registrations/" <> idToText id <> "/delete")
@@ -279,7 +279,7 @@ registrationListPage' registrations
                   ! A.type_ "submit"
                   ! A.name "delete"
                   ! A.value "Löschen"
-        col 6 $ do
+        colMd 6 $ do
           case paidStatus of
             DT.Paid -> mempty
             DT.NotPaid ->
@@ -300,10 +300,10 @@ registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSle
   = layout $ do
     let sleepovers = fmap Db.dbParticipantSleepovers participants
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.h1 "Anmeldungen"
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.div ! A.class_ "alert alert-primary" $ do
           H.ul $ do
             H.li $ do
@@ -323,7 +323,7 @@ registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSle
               " Anmeldungen"
 
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.table ! A.class_ "table" $ do
           H.thead $ do
             H.tr $ do
@@ -359,13 +359,13 @@ registrationListPage participants (GymSleepingLimit gymSleepingLimit, CampingSle
               H.th ""
               H.th ""
     row $ do
-      col 3 $ do
+      colMd 3 $ do
         H.a ! A.href "/registrations.csv" $ "Download als .csv"
-      col 3 $ do
+      colMd 3 $ do
         H.a ! A.href "/registrations/print" $ "Print stuff"
     H.br
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.h3 "E-Mail-Adressen der Minderjährigen"
         H.p $ do
           H.toHtml
@@ -431,7 +431,7 @@ utcToBerlin = utcToZonedTime (hoursToTimeZone 2)
 successPage :: H.Html
 successPage = layout $ do
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.h1 "Danke für deine Anmeldung!" ! A.class_ "text-center"
       H.p ! A.class_ "text-center" $ do
         "Du solltest in Kürze eine E-Mail von uns erhalten. Falls nicht, melde dich bitte unter "
@@ -464,7 +464,7 @@ participantForm :: DV.View T.Text -> Int -> H.Html
 participantForm view currentIndex = do
   H.div ! A.class_ "participant" $ do
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         H.br
         H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer*in"
         H.div ! A.class_ "form-group" $ do
@@ -474,13 +474,14 @@ participantForm view currentIndex = do
         dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
         addressForm $ DV.subView "address" view
         row $ do
-          col 6 $ do
+          colMd 12 $ do
             H.div ! A.class_ "form-group" $ do
               label "Festivalticket" "Ticket" "ticket" view
               DH.inputSelect "ticket" (modifiedView view)
                 ! A.class_ "form-control"
               formErrorMessage "ticket" view
-          col 6 $ do
+        row $ do
+          colMd 12 $ do
             H.div ! A.class_ "form-group" $ do
               label "Unterkunft" "Accommodation" "accommodation" view
               DH.inputSelect "accommodation" (modifiedView view)
@@ -569,10 +570,11 @@ registerPage
   -> H.Html
 registerPage view isOverLimit = layout $ do
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.h1 "Anmeldung zur Freiburger Jonglierconvention 2021"
+      H.h4 $ H.small ! A.class_ "text-muted" $ "24.09.2021 – 26.09.2021"
   row $ do
-    col 12 $ do
+    colLg 6 $ do
       noSleepingMessage isOverLimit
       H.br
       jugglingRegisterForm view
@@ -580,27 +582,23 @@ registerPage view isOverLimit = layout $ do
 addressForm :: DV.View T.Text -> Html
 addressForm addressView = do
   H.div ! A.class_ "form-group" $ do
-    row $ do
-      col 6 $ do
-        label "Straße" "Street" "" addressView
-        DH.inputText "street" (modifiedView addressView) ! A.class_ "form-control"
-        formErrorMessage "street" addressView
+    label "Straße" "Street" "" addressView
+    DH.inputText "street" (modifiedView addressView) ! A.class_ "form-control"
+    formErrorMessage "street" addressView
   H.div ! A.class_ "form-group" $ do
     row $ do
-      col 2 $ do
+      colMd 4 $ do
         label "PLZ" "Postal Code" "" addressView
         DH.inputText "postalCode" (modifiedView addressView) ! A.class_ "form-control"
         formErrorMessage "postalCode" addressView
-      col 4 $ do
+      colMd 8 $ do
         label "Stadt" "City" "" addressView
         DH.inputText "city" (modifiedView addressView) ! A.class_ "form-control"
         formErrorMessage "city" addressView
   H.div ! A.class_ "form-group" $ do
-    row $ do
-      col 6 $ do
-        label "Land" "Country" "" addressView
-        DH.inputText "country" (modifiedView addressView) ! A.class_ "form-control"
-        formErrorMessage "country" addressView
+    label "Land" "Country" "" addressView
+    DH.inputText "country" (modifiedView addressView) ! A.class_ "form-control"
+    formErrorMessage "country" addressView
 
 dateForm :: T.Text -> T.Text -> DV.View T.Text -> Html
 dateForm labelText englishLabelText dateView = do
@@ -614,7 +612,7 @@ dateForm labelText englishLabelText dateView = do
       H.div ! A.class_ "col-sm-4 mt-2 mt-sm-0" $ do
         DH.inputSelect "year" (modifiedView dateView) ! A.class_ "form-control"
     row $ do
-      col 12 $ do
+      colMd 12 $ do
         formErrorMessage "" dateView
 
 
@@ -707,13 +705,13 @@ participationPrintPage
   :: [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
 participationPrintPage participants = layout $ do
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.div ! A.class_ "fixed-header" $ do
         H.h3
           ! A.class_ "text-center"
           $ "Anmeldeliste 22. Freiburger Jonglierfestival – 24. September bis 26. September 2021"
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.table ! A.class_ "table table-bordered table-sm" $ do
         H.thead $ do
           H.tr $ do
@@ -777,11 +775,11 @@ participationPrintPage participants = layout $ do
 registrationPrintPage :: [Db.DbParticipant] -> H.Html
 registrationPrintPage participants = layout $ do
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.div ! A.class_ "fixed-header" $ do
         H.h1 ! A.class_ "text-center" $ "Schülerliste"
   row $ do
-    col 12 $ do
+    colMd 12 $ do
       H.table ! A.class_ "table table-bordered table-sm" $ do
         H.thead $ do
           H.tr $ do
@@ -846,9 +844,13 @@ row inner = H.div ! A.class_ "row" $ inner
 rowWithSpace :: Html -> Html
 rowWithSpace inner = H.div ! A.class_ "row mb-2" $ inner
 
-col :: Int -> Html -> Html
-col columns inner =
+colMd :: Int -> Html -> Html
+colMd columns inner =
   H.div ! A.class_ (H.toValue $ "col-md-" ++ show columns) $ inner
+
+colLg :: Int -> Html -> Html
+colLg columns inner =
+  H.div ! A.class_ (H.toValue $ "col-lg-" ++ show columns) $ inner
 
 paidToText :: DT.PaidStatus -> T.Text
 paidToText DT.Paid    = "Bezahlt"
