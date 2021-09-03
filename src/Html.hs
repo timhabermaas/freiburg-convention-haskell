@@ -474,7 +474,7 @@ participantForm view currentIndex = do
         H.h4 $ H.toHtml $ show currentIndex ++ ". Teilnehmer*in"
         H.div ! A.class_ "form-group" $ do
           label "Name" "Full Name" "name" view
-          DH.inputText "name" view ! A.class_ "form-control"
+          DH.inputText "name" view ! A.class_ "form-control" ! A.autocomplete "name"
           formErrorMessage "name" view
         dateForm "Geburtsdatum" "Birthday" $ DV.subView "birthday" view
         addressForm $ DV.subView "address" view
@@ -498,7 +498,7 @@ jugglingRegisterForm view = do
   H.form ! A.action "/register" ! A.method "post" $ do
     H.div ! A.class_ "form-group" $ do
       label "E-Mail" "Email" "email" view
-      DH.inputText "email" view ! A.class_ "form-control"
+      DH.inputText "email" view ! A.class_ "form-control" ! A.autocomplete "email"
       formErrorMessage "email" view
     H.div ! A.class_ "form-group d-none" $ do
       label "Name" "Full Name" "botField" view
@@ -594,21 +594,21 @@ addressForm :: DV.View T.Text -> Html
 addressForm addressView = do
   H.div ! A.class_ "form-group" $ do
     label "Straße" "Street" "" addressView
-    DH.inputText "street" (modifiedView addressView) ! A.class_ "form-control"
+    DH.inputText "street" (modifiedView addressView) ! A.class_ "form-control" ! A.autocomplete "street-address"
     formErrorMessage "street" addressView
   H.div ! A.class_ "form-group" $ do
     row $ do
       colMd 4 $ do
         label "PLZ" "Postal Code" "" addressView
-        DH.inputText "postalCode" (modifiedView addressView) ! A.class_ "form-control"
+        DH.inputText "postalCode" (modifiedView addressView) ! A.class_ "form-control" ! A.autocomplete "postal-code"
         formErrorMessage "postalCode" addressView
       colMd 8 $ do
         label "Stadt" "City" "" addressView
-        DH.inputText "city" (modifiedView addressView) ! A.class_ "form-control"
+        DH.inputText "city" (modifiedView addressView) ! A.class_ "form-control" ! A.autocomplete "address-level2"
         formErrorMessage "city" addressView
   H.div ! A.class_ "form-group" $ do
     label "Land" "Country" "" addressView
-    DH.inputText "country" (modifiedView addressView) ! A.class_ "form-control"
+    DH.inputText "country" (modifiedView addressView) ! A.class_ "form-control" ! A.autocomplete "country-name"
     formErrorMessage "country" addressView
 
 dateForm :: T.Text -> T.Text -> DV.View T.Text -> Html
