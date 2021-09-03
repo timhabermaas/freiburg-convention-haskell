@@ -76,7 +76,7 @@ instance H.ToMarkup DT.Name where
 filteredParticipants
   :: [P.ExistingParticipant] -> P.Accommodation -> P.Stay -> Int
 filteredParticipants participants accommodation stay = length $ do
-  p@(P.Participant' _ _ _ (P.Ticket _ _ pStay _) _) <- participants
+  p@(P.Participant' _ _ _ (P.Ticket _ _ pStay _ _) _) <- participants
   guard $ pStay == stay
   guard $ P.participantAccommodation p == accommodation
   pure p
@@ -385,6 +385,7 @@ jugglingRegisterForm view = do
           ! A.class_ "text-secondary"
           $ " (Register additional participants)"
     H.br
+    H.br
 
     H.div ! A.class_ "form-group" $ do
       label "Willst du uns noch etwas mitteilen?"
@@ -439,12 +440,12 @@ registerPage
   -> LimitReached
   -> H.Html
 registerPage view isOverLimit = layout $ do
-  row $ do
+  H.div ! A.class_ "row mb-4" $ do
     colMd 12 $ do
-      H.h1 "Anmeldung zur Freiburger Jonglierconvention 2021"
-      H.h4 $ H.small ! A.class_ "text-muted" $ "24.09.2021 – 26.09.2021"
+      H.h1 ! A.class_ "text-center" $ "Anmeldung zur Freiburger Jonglierconvention 2021"
+      H.h4 ! A.class_ "text-center" $ H.small ! A.class_ "text-muted" $ "24.09.2021 – 26.09.2021"
 
-  row $ do
+  H.div ! A.class_ "row justify-content-center" $ do
     colLg 6 $ do
       noSleepingMessage isOverLimit
 

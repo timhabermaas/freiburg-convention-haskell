@@ -25,7 +25,7 @@ module Domain.Participant
   , defaultTicket
   , Stay(..)
   , AgeCategory(..)
-  , jugglerTicketChoices
+  , selectableTickets
   , ticketFromId
   , ageLabel
   , stayLabel
@@ -101,10 +101,20 @@ instance Show ExistingParticipant where
     show (Participant' id_ pI address ticket details) = show id_ ++ show pI ++ show address ++ show details ++ show ticket
 
 
-data Stay = LongStay | ShortStay deriving (Show, Eq)
-data AgeCategory = Baby | Child | OlderThan12 deriving (Show, Eq)
+data Stay
+  -- | represents staying from Thursday to Sunday
+  = LongStay
+  -- | represents staying from Friday to Sunday
+  | ShortStay
+  deriving (Show, Eq)
 
-data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Price } deriving Show
+data AgeCategory
+  = Baby
+  | Child
+  | OlderThan12
+  deriving (Show, Eq)
+
+data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Price, selectable :: Bool } deriving Show
 
 ticketLabel :: Ticket -> T.Text
 ticketLabel Ticket{..} = stayLabel stay <> ", " <> ageLabel ageCategory <> ": " <> priceLabel price
@@ -124,17 +134,22 @@ instance Eq Ticket where
     t1 == t2 = id t1 == id t2
 
 defaultTicket :: Ticket
-defaultTicket = head jugglerTicketChoices
+defaultTicket = head allTickets
 
-jugglerTicketChoices :: [Ticket]
-jugglerTicketChoices =
-    [ Ticket (Id 13) OlderThan12 LongStay (Price 45)
-    , Ticket (Id 14) Child LongStay (Price 23)
-    , Ticket (Id 15) Baby LongStay (Price 0)
-    , Ticket (Id 16) OlderThan12 ShortStay (Price 36)
-    , Ticket (Id 17) Child ShortStay (Price 18)
-    , Ticket (Id 18) Baby ShortStay (Price 0)
+selectableTickets :: [Ticket]
+selectableTickets = filter isSelectable allTickets
+  where
+    isSelectable (Ticket _ _ _ _ s) = s
+
+allTickets :: [Ticket]
+allTickets =
+    [ Ticket (Id 13) OlderThan12 LongStay (Price 45) False
+    , Ticket (Id 14) Child LongStay (Price 23) False
+    , Ticket (Id 15) Baby LongStay (Price 0) False
+    , Ticket (Id 16) OlderThan12 ShortStay (Price 36) True
+    , Ticket (Id 17) Child ShortStay (Price 18) True
+    , Ticket (Id 18) Baby ShortStay (Price 0) True
     ]
 
 ticketFromId :: Id -> Ticket
-ticketFromId id' = head $ filter (\(Ticket id'' _ _ _) -> id'' == id') jugglerTicketChoices
+ticketFromId id' = head $ filter (\(Ticket id'' _ _ _ _) -> id'' == id') allTickets

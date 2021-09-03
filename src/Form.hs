@@ -12,7 +12,7 @@ import qualified Text.Digestive.Types as DT
 import qualified Data.Text as T
 import qualified Data.Set as Set
 import qualified Data.List.NonEmpty as NE
-import Data.Time.Calendar (Day, fromGregorianValid, fromGregorian)
+import Data.Time.Calendar (Day, fromGregorianValid)
 import qualified Domain.Registration as Domain
 import qualified Domain.Participant as Domain
 import qualified Domain.SharedTypes as SharedTypes
@@ -85,7 +85,7 @@ participantForm :: Monad m => LimitReached -> DF.Formlet T.Text m Domain.NewPart
 participantForm limitReached _def =
     buildParticipant <$> "name" DF..: mustBePresent (DF.text Nothing)
                      <*> "birthday" DF..: birthdayFields
-                     <*> "ticket" DF..: ticketForm Domain.jugglerTicketChoices
+                     <*> "ticket" DF..: ticketForm Domain.selectableTickets
                      <*> "accommodation" DF..: sleepingForm limitReached (Just Domain.Gym)
                      <*> "address" DF..: addressForm Nothing
   where

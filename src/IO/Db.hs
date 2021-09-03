@@ -128,7 +128,7 @@ saveRegistration' (Handle pool) R.Registration{..} =
             _ <- PSQL.execute conn "UPDATE registrations SET paymentCode = ? WHERE id = ?" (show $ registrationId + 100, registrationId)
             forM_ participants $ \p -> do
                 case p of
-                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Address street postalCode city country) (P.Ticket (DT.Id ticketId) _ _ _) sleeping ->
+                    P.Participant' () (P.PersonalInformation (DT.Name name) (DT.Birthday birthday)) (P.Address street postalCode city country) (P.Ticket (DT.Id ticketId) _ _ _ _) sleeping ->
                         PSQL.execute conn "INSERT INTO participants (name, birthday, registrationId, accommodation, ticketId, type, street, postalCode, city, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" (name, birthday, registrationId :: Int, sleeping, ticketId, "juggler" :: T.Text, street, postalCode, city, country)
             pure $ DT.Id registrationId
 

@@ -270,7 +270,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
     (DT.PaymentCode paymentReason) = D.paymentCode registration
     nameAndTicketLine p =
         let
-            (P.Ticket _ age stay price) = P.participantTicket p
+            (P.Ticket _ age stay price _) = P.participantTicket p
             (DT.Name name) = P.participantName p
         in
             "* " <> name <> " " <> P.ageLabel age <> " " <> P.stayLabel stay <> " " <> T.pack (show price)
