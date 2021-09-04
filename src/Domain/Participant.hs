@@ -112,6 +112,7 @@ data AgeCategory
   = Baby
   | Child
   | OlderThan12
+  | Supporter
   deriving (Show, Eq)
 
 data Ticket = Ticket { id :: Id, ageCategory :: AgeCategory, stay :: Stay, price :: Price, selectable :: Bool } deriving Show
@@ -125,6 +126,7 @@ ageLabel :: AgeCategory -> T.Text
 ageLabel Baby = "0–3 Jahre"
 ageLabel Child = "4–12 Jahre"
 ageLabel OlderThan12 = ">12 Jahre"
+ageLabel Supporter = ">12 Jahre (Supporter)"
 
 stayLabel :: Stay -> T.Text
 stayLabel LongStay = "Do.–So."
@@ -155,8 +157,9 @@ allTickets =
     [ Ticket (Id 13) OlderThan12 LongStay (Price 45) False
     , Ticket (Id 14) Child LongStay (Price 23) False
     , Ticket (Id 15) Baby LongStay (Price 0) False
-    , Ticket (Id 16) OlderThan12 ShortStay (Price 36) True
-    , Ticket (Id 17) Child ShortStay (Price 18) True
+    , Ticket (Id 16) OlderThan12 ShortStay (Price 20) True
+    , Ticket (Id 19) Supporter ShortStay (Price 30) True
+    , Ticket (Id 17) Child ShortStay (Price 10) True
     , Ticket (Id 18) Baby ShortStay (Price 0) True
     ]
 
