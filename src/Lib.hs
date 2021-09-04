@@ -264,7 +264,7 @@ mailForRegistration registration = Mailer.Mail mailBodyComplete subject (mailAdd
   where
     (DT.Name firstParticipantName) = P.participantName $ NE.head $ D.participants registration
     mailAddress = DT.MailAddress $ D.email registration
-    subject = "[Test] Bestellbestätigung Freiburger Jonglierfestival"
+    subject = "Bestellbestätigung Freiburger Jonglierfestival"
     newLine = "\n"
     totalPrice = T.pack $ show $ D.priceToPay registration
     (DT.PaymentCode paymentReason) = D.paymentCode registration
