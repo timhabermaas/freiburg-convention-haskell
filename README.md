@@ -42,8 +42,11 @@ The app is deployed to [Heroku](https://www.heroku.com/).
 
 ### Create new Heroku instance
 
-Requires the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and the [Haskell Stack
-buildkit](https://github.com/mfine/heroku-buildpack-stack):
+_Note: Required only before the first deployment, see [Deploy new
+verion](#deploy-new-version) for subsequent deployments._
+
+Requires the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and
+the [Haskell Stack buildkit](https://github.com/mfine/heroku-buildpack-stack):
 
 
 ```sh
