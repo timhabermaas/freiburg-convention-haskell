@@ -347,8 +347,7 @@ participantForm view currentIndex = do
           colMd 12 $ do
             H.div ! A.class_ "form-group" $ do
               label "Festivalticket" "Ticket" "ticket" view
-              DH.inputSelect "ticket" (modifiedView view)
-                ! A.class_ "form-control"
+              bootstrapRadios "ticket" (modifiedView view)
               formErrorMessage "ticket" view
         row $ do
           colMd 12 $ do
@@ -422,7 +421,7 @@ jugglingRegisterForm view = do
             , "   var lastForm = participants[participants.length - 1];"
             , "   var newForm = lastForm.cloneNode(true);"
             , "   newForm.querySelectorAll('input, select').forEach(function(e) { replaceNumberInAttribute(e, 'name', nextId); replaceNumberInAttribute(e, 'id', nextId); });"
-            , "   newForm.querySelectorAll('input').forEach(function(e) { e.value = ''; });"
+            , "   newForm.querySelectorAll('input[type=text]').forEach(function(e) { e.value = ''; });"
             , "   newForm.querySelectorAll('label').forEach(function(e) { replaceNumberInAttribute(e, 'for', nextId) });"
             , "   var headline = newForm.querySelector('h4');"
             , "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer*in';"

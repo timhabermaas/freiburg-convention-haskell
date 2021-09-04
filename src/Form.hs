@@ -113,7 +113,7 @@ sleepingForm limitReached = DF.choice (catMaybes [gymChoice limitReached, campin
     selfOrganizedChoice _ =  Just (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
-ticketForm availableTickets = DF.choice ticketChoicesWithLabel (Just Domain.defaultTicket)
+ticketForm availableTickets = DF.choice ticketChoicesWithLabel Nothing
   where
     ticketChoicesWithLabel :: [(Domain.Ticket, T.Text)]
     ticketChoicesWithLabel = zip availableTickets $ Domain.ticketLabel <$> availableTickets
