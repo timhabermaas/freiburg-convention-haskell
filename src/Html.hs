@@ -186,7 +186,7 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
       H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
       H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
       H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
-      H.td $ H.toHtml $ show $ P.participantAccommodation p
+      H.td $ H.toHtml $ sleepOverToGerman $ P.participantAccommodation p
       H.td $ H.toHtml $ paidToText paidStatus
       H.td $ H.toHtml $ fromMaybe "" comment
 
@@ -638,13 +638,17 @@ participationPrintPage participants = layout $ do
     H.td
       ! A.class_ "text-center"
       ! A.style "width: 40px"
-      $ sleepOverShort
+      $ H.toHtml
+      $ sleepOverToGerman
       $ P.participantAccommodation p
     H.td $ H.toHtml $ paidToText paidStatus
     H.td $ mempty
-  sleepOverShort P.Camping       = "Camp"
-  sleepOverShort P.SelfOrganized = "—"
-  sleepOverShort P.Gym           = "Halle"
+
+sleepOverToGerman :: P.Accommodation -> T.Text
+sleepOverToGerman P.Camping       = "Zelt"
+sleepOverToGerman P.SelfOrganized = "—"
+sleepOverToGerman P.Gym           = "Halle"
+
 
 
 row :: Html -> Html
