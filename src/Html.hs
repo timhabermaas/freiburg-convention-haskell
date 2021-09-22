@@ -593,7 +593,7 @@ participationPrintPage participants = layout $ do
           H.tr $ do
             H.td ! A.colspan "10" $ do
               H.strong "Haftungsausschluss: "
-              "Mit meiner Unterschrift bestätige ich, dass mir bekannt ist, dass auf dem Jonglierfestival Freiburg von den OrganisatorInnen keine Haftung für eventuell auftretende Verletzungen, Diebstähle etc. übernommen werden kann. Dies gilt auch für alle Zwischenfälle während der Anfahrt oder Rückreise. Weiterhin bestätige ich, dass ich ausreichend versichtert bin (Haft- und Unfallversicherung), die Hallenordnung anerkenne und den Anweisungen der OrganisatorInnen Folge leiste."
+              "Mit meiner Unterschrift bestätige ich, dass mir bekannt ist, dass auf dem Jonglierfestival Freiburg von den OrganisatorInnen keine Haftung für eventuell auftretende Verletzungen, Diebstähle etc. übernommen werden kann. Dies gilt auch für alle Zwischenfälle während der Anfahrt oder Rückreise. Weiterhin bestätige ich, dass ich ausreichend versichert bin (Haft- und Unfallversicherung), die Hallenordnung und das Hygienekonzept anerkenne und den Anweisungen der OrganisatorInnen Folge leiste."
               H.br
               H.strong "Erklärung zur Bildnutzung: "
               "Mit meiner Unterschrift erkläre ich mich einverstanden, dass Fotos, die während des Festivals von mir gemacht werden, auf der Webseite "
