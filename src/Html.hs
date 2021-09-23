@@ -56,7 +56,7 @@ layout inner = do
       H.meta ! A.charset "utf-8"
       H.meta ! A.name "viewport" ! A.content
         "width=device-width, initial-scale=1, shrink-to-fit=no"
-      H.title "Freiburger Convention 2020"
+      H.title "Freiburger Convention 2021"
       H.link
         ! A.rel "stylesheet"
         ! A.type_ "text/css"
