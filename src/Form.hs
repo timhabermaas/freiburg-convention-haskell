@@ -1,30 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Form
-    ( newRegisterForm
-    , Participant(..)
-    , BotCheckResult(..)
-    ) where
+  ( newRegisterForm,
+    Participant (..),
+    BotCheckResult (..),
+  )
+where
 
-import Types
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (catMaybes)
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import Data.Time.Calendar (Day, fromGregorianValid)
+import qualified Domain.Participant as Domain
+import qualified Domain.Registration as Domain
+import qualified Domain.SharedTypes as SharedTypes
 import qualified Text.Digestive.Form as DF
 import qualified Text.Digestive.Types as DT
-import qualified Data.Text as T
-import qualified Data.Set as Set
-import qualified Data.List.NonEmpty as NE
-import Data.Time.Calendar (Day, fromGregorianValid)
-import qualified Domain.Registration as Domain
-import qualified Domain.Participant as Domain
-import qualified Domain.SharedTypes as SharedTypes
+import Types
 import Prelude hiding (id)
 import qualified Prelude as Prelude
-import Data.Maybe (catMaybes)
 
-data BotCheckResult a = IsBot | IsHuman a deriving Show
+data BotCheckResult a = IsBot | IsHuman a deriving (Show)
 
 participantIsEmpty :: Domain.NewParticipant -> Bool
-participantIsEmpty p = SharedTypes.nameEmpty (Domain.participantName p)
-                    || Domain.addressIsEmpty (Domain.participantAddress p)
+participantIsEmpty p =
+  SharedTypes.nameEmpty (Domain.participantName p)
+    || Domain.addressIsEmpty (Domain.participantAddress p)
 
 checkForBot :: Monad m => DF.Form T.Text m a -> DF.Form T.Text m (BotCheckResult a)
 checkForBot innerForm = (\t -> if T.null t then IsHuman else const IsBot) <$> "botField" DF..: DF.text Nothing <*> innerForm
@@ -34,45 +36,47 @@ maybeHuman IsBot = Nothing
 maybeHuman (IsHuman x) = Just x
 
 newRegisterForm :: Monad m => LimitReached -> DF.Formlet T.Text m (BotCheckResult Domain.NewRegistration)
-newRegisterForm limitReached def = checkForBot $ fmap fst $
-    (,) <$>
-      (Domain.Registration <$> pure ()
-                           <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
-                           <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf (participantForm limitReached) (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
-                           <*> "comment" DF..: optionalText
-                           <*> pure ()
-                           <*> pure ()
-                           <*> pure ())
-                   <*> "covidTermsAccepted" DF..: mustBeChecked (DF.bool (Just False))
+newRegisterForm limitReached def =
+  checkForBot $
+    fmap fst $
+      (,)
+        <$> ( Domain.Registration <$> pure ()
+                <*> "email" DF..: validateAndNormalizeEmail (mustBePresent (DF.text Nothing))
+                <*> "participants" DF..: mustContainAtLeastOne "Mindestens ein Teilnehmer muss angegeben werden." (DF.listOf (participantForm limitReached) (NE.toList <$> (Domain.participants <$> (def >>= maybeHuman))))
+                <*> "comment" DF..: optionalText
+                <*> pure ()
+                <*> pure ()
+                <*> pure ()
+            )
+        <*> "covidTermsAccepted" DF..: mustBeChecked (DF.bool (Just False))
 
 validateAndNormalizeEmail :: Monad m => DF.Form T.Text m T.Text -> DF.Form T.Text m T.Text
 validateAndNormalizeEmail = DF.validate validateEmail
   where
     validateEmail rawEmail =
-        let
-            strippedEmail = T.strip rawEmail
-            atSignCount = T.length $ T.filter (== '@') strippedEmail
-            -- T.breakOn also returns the @, therefore remove it using drop.
-            (partBeforeAt, partAfterAt) = T.drop 1 <$> T.breakOn "@" strippedEmail
-            partBeforeAtNonEmpty = not $ T.null $ T.strip partBeforeAt
-            partAfterAtNonEmpty = not $ T.null $ T.strip partAfterAt
-        in
-            if atSignCount > 0 && partBeforeAtNonEmpty && partAfterAtNonEmpty
-                then DT.Success strippedEmail
-                else DT.Error "not a valid email address"
+      let strippedEmail = T.strip rawEmail
+          atSignCount = T.length $ T.filter (== '@') strippedEmail
+          -- T.breakOn also returns the @, therefore remove it using drop.
+          (partBeforeAt, partAfterAt) = T.drop 1 <$> T.breakOn "@" strippedEmail
+          partBeforeAtNonEmpty = not $ T.null $ T.strip partBeforeAt
+          partAfterAtNonEmpty = not $ T.null $ T.strip partAfterAt
+       in if atSignCount > 0 && partBeforeAtNonEmpty && partAfterAtNonEmpty
+            then DT.Success strippedEmail
+            else DT.Error "not a valid email address"
 
 data Mandatory = Mandatory | NotMandatory
 
 -- Represents multiple choices with an "other" field where the user can type in any value.
 multipleWithFreeFormField :: (Ord a, Monad m) => Mandatory -> [(a, T.Text)] -> (T.Text -> a, T.Text) -> DF.Form T.Text m (Set.Set a)
 multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel) =
-    foo freeFormConstructor <$> "text" DF..: DF.text Nothing
-                            <*> "choice" DF..: mandatoryOrNot (DF.choiceMultiple allChoices Nothing)
+  foo freeFormConstructor
+    <$> "text" DF..: DF.text Nothing
+    <*> "choice" DF..: mandatoryOrNot (DF.choiceMultiple allChoices Nothing)
   where
     mandatoryOrNot =
-        case mandatory of
-            Mandatory -> fmap NE.toList . mustContainAtLeastOne "can't be blank"
-            NotMandatory -> Prelude.id
+      case mandatory of
+        Mandatory -> fmap NE.toList . mustContainAtLeastOne "can't be blank"
+        NotMandatory -> Prelude.id
     allChoices = ((\(value, label) -> (Just value, label)) <$> choices) ++ [(Nothing, freeFormLabel)]
     foo :: (Ord a) => (T.Text -> a) -> T.Text -> [Maybe a] -> Set.Set a
     foo f text selected = Set.fromList (unwrapElement text f <$> selected)
@@ -80,24 +84,25 @@ multipleWithFreeFormField mandatory choices (freeFormConstructor, freeFormLabel)
     unwrapElement _ _ (Just x) = x
     unwrapElement otherText f Nothing = f otherText
 
-
 participantForm :: Monad m => LimitReached -> DF.Formlet T.Text m Domain.NewParticipant
 participantForm limitReached _def =
-    buildParticipant <$> "name" DF..: mustBePresent (DF.text Nothing)
-                     <*> "birthday" DF..: birthdayFields
-                     <*> "ticket" DF..: ticketForm Domain.selectableTickets
-                     <*> "accommodation" DF..: sleepingForm limitReached (Just Domain.Gym)
-                     <*> "address" DF..: addressForm Nothing
+  buildParticipant
+    <$> "name" DF..: mustBePresent (DF.text Nothing)
+    <*> "birthday" DF..: birthdayFields
+    <*> "ticket" DF..: ticketForm Domain.selectableTickets
+    <*> "accommodation" DF..: sleepingForm limitReached (Just Domain.Gym)
+    <*> "address" DF..: addressForm Nothing
   where
     buildParticipant :: T.Text -> Day -> Domain.Ticket -> Domain.Accommodation -> Domain.Address -> Domain.NewParticipant
     buildParticipant name birthday ticket sleeping address = Domain.Participant' () (Domain.PersonalInformation (SharedTypes.Name name) (SharedTypes.Birthday birthday)) address ticket sleeping
 
 addressForm :: Monad m => DF.Formlet T.Text m Domain.Address
 addressForm _def =
-  Domain.Address <$> "street" DF..: mustBePresent (DF.text Nothing)
-                 <*> "postalCode" DF..: mustBePresent (DF.text Nothing)
-                 <*> "city" DF..: mustBePresent (DF.text Nothing)
-                 <*> "country" DF..: mustBePresent (DF.text Nothing)
+  Domain.Address
+    <$> "street" DF..: mustBePresent (DF.text Nothing)
+    <*> "postalCode" DF..: mustBePresent (DF.text Nothing)
+    <*> "city" DF..: mustBePresent (DF.text Nothing)
+    <*> "country" DF..: mustBePresent (DF.text Nothing)
 
 sleepingForm :: Monad m => LimitReached -> DF.Formlet T.Text m Domain.Accommodation
 sleepingForm limitReached = DF.choice (catMaybes [gymChoice limitReached, campingChoice limitReached, selfOrganizedChoice limitReached])
@@ -110,7 +115,7 @@ sleepingForm limitReached = DF.choice (catMaybes [gymChoice limitReached, campin
     campingChoice SleepingAtSideLimitReached = Nothing
     campingChoice OverallLimitReached = Nothing
     campingChoice _ = Just (Domain.Camping, "Zelt neben der Halle (tent)")
-    selfOrganizedChoice _ =  Just (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
+    selfOrganizedChoice _ = Just (Domain.SelfOrganized, "Ich sorge für meine eigene Übernachtung (self-organized)")
 
 ticketForm :: Monad m => [Domain.Ticket] -> DF.Form T.Text m Domain.Ticket
 ticketForm availableTickets = DF.choice ticketChoicesWithLabel Nothing
@@ -155,32 +160,33 @@ registerForm isOverLimit =
 
 dateFields :: Monad m => (Integer, Int, Int) -> DF.Form T.Text m Day
 dateFields (year, month, day) =
-    DF.validate (maybe (DT.Error "not a valid date") DT.Success)
-  $ fromGregorianValid <$> "year" DF..: DF.choice years (Just year)
-                       <*> "month" DF..: DF.choice months (Just month)
-                       <*> "day" DF..: DF.choice days (Just day)
+  DF.validate (maybe (DT.Error "not a valid date") DT.Success) $
+    fromGregorianValid
+      <$> "year" DF..: DF.choice years (Just year)
+      <*> "month" DF..: DF.choice months (Just month)
+      <*> "day" DF..: DF.choice days (Just day)
   where
     years :: [(Integer, T.Text)]
-    years = fmap (\y -> (y, T.pack $ show y)) [1850..2021]
+    years = fmap (\y -> (y, T.pack $ show y)) [1850 .. 2021]
 
     months :: [(Int, T.Text)]
     months =
-        [ (1, "Januar")
-        , (2, "Februar")
-        , (3, "März")
-        , (4, "April")
-        , (5, "Mai")
-        , (6, "Juni")
-        , (7, "Juli")
-        , (8, "August")
-        , (9, "September")
-        , (10, "Oktober")
-        , (11, "November")
-        , (12, "Dezember")
-        ]
+      [ (1, "Januar"),
+        (2, "Februar"),
+        (3, "März"),
+        (4, "April"),
+        (5, "Mai"),
+        (6, "Juni"),
+        (7, "Juli"),
+        (8, "August"),
+        (9, "September"),
+        (10, "Oktober"),
+        (11, "November"),
+        (12, "Dezember")
+      ]
 
     days :: [(Int, T.Text)]
-    days = fmap (\y -> (y, T.pack $ show y)) [1..31]
+    days = fmap (\y -> (y, T.pack $ show y)) [1 .. 31]
 
 birthdayFields :: Monad m => DF.Form T.Text m Day
 birthdayFields = dateFields (1990, 1, 1)
@@ -198,12 +204,12 @@ maybeEmpty = fmap (\t -> if T.null $ T.strip t then Nothing else Just $ T.strip 
 
 optionalText :: Monad m => DF.Form T.Text m (Maybe T.Text)
 optionalText =
-    (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
+  (\t -> if T.null (T.strip t) then Nothing else Just (T.strip t)) <$> DF.text Nothing
 
 mustContainAtLeastOne :: Monad m => T.Text -> DF.Form T.Text m [a] -> DF.Form T.Text m (NE.NonEmpty a)
 mustContainAtLeastOne errorMessage = DF.validate nonEmptyOrList
   where
     nonEmptyOrList list =
-        if null list
-            then DT.Error errorMessage
-            else DT.Success $ NE.fromList list
+      if null list
+        then DT.Error errorMessage
+        else DT.Success $ NE.fromList list

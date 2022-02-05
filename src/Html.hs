@@ -1,47 +1,50 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE GADTs                     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Html
-  ( registerPage
-  , successPage
-  , registrationListPage'
-  , participationPrintPage
-  , participationListPage
-  , Html
+  ( registerPage,
+    successPage,
+    registrationListPage',
+    participationPrintPage,
+    participationListPage,
+    Html,
   )
 where
 
-import qualified Text.Blaze.Html5              as H
-import           Text.Blaze.Html5               ( (!)
-                                                , (!?)
-                                                )
-import qualified Text.Blaze.Html5.Attributes   as A
-import qualified Text.Digestive.Blaze.Html5    as DH
-import qualified Text.Digestive.View           as DV
-import qualified Data.Text                     as T
-import           Data.Monoid                    ( (<>) )
-import           Data.Time.Clock                ( UTCTime )
-import           Data.Time.Format               ( formatTime
-                                                , defaultTimeLocale
-                                                )
-import           Data.Time.LocalTime            ( utcToZonedTime
-                                                , hoursToTimeZone
-                                                , ZonedTime
-                                                )
-import           Data.Maybe                     ( fromMaybe
-                                                )
-import           Prelude                 hiding ( id )
-import           Data.Coerce                    ( coerce )
-import           Control.Monad                  ( guard )
-
-import           Types
-import           Util
-import qualified Domain.Registration           as R
-import qualified Domain.Participant            as P
-import qualified Domain.SharedTypes            as DT
+import Control.Monad (guard)
+import Data.Coerce (coerce)
+import Data.Maybe
+  ( fromMaybe,
+  )
+import Data.Monoid ((<>))
+import qualified Data.Text as T
+import Data.Time.Clock (UTCTime)
+import Data.Time.Format
+  ( defaultTimeLocale,
+    formatTime,
+  )
+import Data.Time.LocalTime
+  ( ZonedTime,
+    hoursToTimeZone,
+    utcToZonedTime,
+  )
+import qualified Domain.Participant as P
+import qualified Domain.Registration as R
+import qualified Domain.SharedTypes as DT
+import Text.Blaze.Html5
+  ( (!),
+    (!?),
+  )
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+import qualified Text.Digestive.Blaze.Html5 as DH
+import qualified Text.Digestive.View as DV
+import Types
+import Util
+import Prelude hiding (id)
 
 type Html = H.Html
 
@@ -54,16 +57,18 @@ layout inner = do
   H.html ! A.lang "de" $ do
     H.head $ do
       H.meta ! A.charset "utf-8"
-      H.meta ! A.name "viewport" ! A.content
-        "width=device-width, initial-scale=1, shrink-to-fit=no"
+      H.meta ! A.name "viewport"
+        ! A.content
+          "width=device-width, initial-scale=1, shrink-to-fit=no"
       H.title "Freiburger Convention 2021"
       H.link
         ! A.rel "stylesheet"
         ! A.type_ "text/css"
         ! A.href
-            "https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css"
-      H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href
-        "https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+          "https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css"
+      H.link ! A.rel "stylesheet" ! A.type_ "text/css"
+        ! A.href
+          "https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     H.body $ do
       H.div ! A.class_ "container" $ do
         H.div ! A.class_ "mb-3" $ mempty
@@ -72,12 +77,11 @@ layout inner = do
 instance H.ToMarkup DT.Name where
   toMarkup (DT.Name x) = H.toMarkup x
 
-
-filteredParticipants
-  :: [P.ExistingParticipant] -> P.Accommodation -> P.Stay -> Int
-filteredParticipants participants accommodation stay = length $ do
-  p@(P.Participant' _ _ _ (P.Ticket _ _ pStay _ _) _) <- participants
-  guard $ pStay == stay
+filteredParticipants ::
+  [P.ExistingParticipant] -> P.Accommodation -> P.Duration -> Int
+filteredParticipants participants accommodation duration = length $ do
+  p@(P.Participant' _ _ _ (P.Ticket _ _ pDuration _ _) _) <- participants
+  guard $ pDuration == duration
   guard $ P.participantAccommodation p == accommodation
   pure p
 
@@ -87,10 +91,9 @@ filteredParticipants' participants accommodation = length $ do
   guard $ P.participantAccommodation p == accommodation
   pure p
 
-
-participationListPage
-  :: [(P.ExistingParticipant, R.ExistingRegistration)] -> ParticipantLimits -> H.Html
-participationListPage participants' ParticipantLimits{..} = layout $ do
+participationListPage ::
+  [(P.ExistingParticipant, R.ExistingRegistration)] -> ParticipantLimits -> H.Html
+participationListPage participants' ParticipantLimits {..} = layout $ do
   let participants = fmap fst participants'
   row $ do
     colMd 12 $ do
@@ -116,52 +119,64 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
         H.tbody $ do
           H.tr $ do
             H.th $ "Schlafhalle"
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Gym
-              P.LongStay
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Gym
-              P.ShortStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.Gym
+                  P.LongStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.Gym
+                  P.ShortStay
             H.td ! A.class_ "text-right" $ do
-                H.strong $ H.toHtml $ filteredParticipants' participants P.Gym
-                H.small $ H.toHtml $ " (max " <> show @Int (coerce gymSleeping) <> ")"
+              H.strong $ H.toHtml $ filteredParticipants' participants P.Gym
+              H.small $ H.toHtml $ " (max " <> show @Int (coerce gymSleeping) <> ")"
           H.tr $ do
             H.th $ "Camping"
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Camping
-              P.LongStay
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.Camping
-              P.ShortStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.Camping
+                  P.LongStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.Camping
+                  P.ShortStay
             H.td ! A.class_ "text-right" $ do
-                H.strong $ H.toHtml $ filteredParticipants' participants P.Camping
-                H.small $ H.toHtml $ " (max " <> show @Int (coerce campingSleeping) <> ")"
+              H.strong $ H.toHtml $ filteredParticipants' participants P.Camping
+              H.small $ H.toHtml $ " (max " <> show @Int (coerce campingSleeping) <> ")"
           H.tr $ do
             H.th $ "Woanders"
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.SelfOrganized
-              P.LongStay
-            H.td ! A.class_ "text-right" $ H.toHtml $ filteredParticipants
-              participants
-              P.SelfOrganized
-              P.ShortStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.SelfOrganized
+                  P.LongStay
+            H.td ! A.class_ "text-right" $
+              H.toHtml $
+                filteredParticipants
+                  participants
+                  P.SelfOrganized
+                  P.ShortStay
             H.td
               ! A.class_ "text-right"
-              $ H.strong
-              $ H.toHtml
-              $ filteredParticipants' participants P.SelfOrganized
+              $ H.strong $
+                H.toHtml $
+                  filteredParticipants' participants P.SelfOrganized
           H.tr $ do
             H.td mempty
             H.td mempty
             H.td mempty
             H.td ! A.class_ "text-right" $ do
-                H.strong $ H.toHtml $ length participants
-                H.small $ H.toHtml $ " (max " <> show @Int (coerce overallLimit) <> ")"
+              H.strong $ H.toHtml $ length participants
+              H.small $ H.toHtml $ " (max " <> show @Int (coerce overallLimit) <> ")"
   rowWithSpace $ do
     colMd 12 $ do
       H.a ! A.href "/admin/participants/print" $ "Druckansicht"
@@ -178,23 +193,23 @@ participationListPage participants' ParticipantLimits{..} = layout $ do
             H.th "Bezahlt?"
             H.th "Mitteilung"
         H.tbody $ mapM_ participantRow participants'
- where
-  participantRow :: (P.ExistingParticipant, R.ExistingRegistration) -> H.Html
-  participantRow (p, R.Registration {..}) = do
-    H.tr $ do
-      H.td $ H.toHtml $ P.participantName p
-      H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
-      H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
-      H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
-      H.td $ H.toHtml $ sleepOverToGerman $ P.participantAccommodation p
-      H.td $ H.toHtml $ paidToText paidStatus
-      H.td $ H.toHtml $ fromMaybe "" comment
+  where
+    participantRow :: (P.ExistingParticipant, R.ExistingRegistration) -> H.Html
+    participantRow (p, R.Registration {..}) = do
+      H.tr $ do
+        H.td $ H.toHtml $ P.participantName p
+        H.td $ H.toHtml $ formatDay $ coerce $ P.participantBirthday p
+        H.td $ H.toHtml $ P.formatAddress $ P.participantAddress p
+        H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+        H.td $ H.toHtml $ sleepOverToGerman $ P.participantAccommodation p
+        H.td $ H.toHtml $ paidToText paidStatus
+        H.td $ H.toHtml $ fromMaybe "" comment
 
-registrationListPage'
-  :: [R.ExistingRegistration]
-  -> H.Html
-registrationListPage' registrations
-  = layout $ do
+registrationListPage' ::
+  [R.ExistingRegistration] ->
+  H.Html
+registrationListPage' registrations =
+  layout $ do
     row $ do
       colMd 12 $ do
         H.h1 "Anmeldungen"
@@ -233,6 +248,7 @@ registrationListPage' registrations
               H.th "Bezahlt?"
               H.th "Aktionen"
           H.tbody $ mapM_ registrationRow registrations
+  where
     {-row $ do
         colMd 3 $ do
             H.a ! A.href "/registrations.csv" $ "Download als .csv"
@@ -240,57 +256,51 @@ registrationListPage' registrations
             H.a ! A.href "/registrations/print" $ "Print stuff"
         -}
 
-
-
-
-
-
- where
-  registrationRow :: R.ExistingRegistration -> H.Html
-  registrationRow reg@R.Registration {..} = H.tr $ do
-    H.td $ H.toHtml email
-    H.td $ H.toHtml $ length participants
-    H.td $ H.toHtml $ fromMaybe "" comment
-    H.td
-      $ H.toHtml
-      $ formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr"
-      $ utcToBerlin registeredAt
-    H.td $ H.toHtml $ paymentCode
-    H.td $ H.toHtml $ show $ R.priceToPay reg
-    H.td $ if paidStatus == DT.Paid then "✓" else "✘"
-    H.td $ do
-      row $ do
-        colMd 6 $ do
-          H.form
-            ! A.action
+    registrationRow :: R.ExistingRegistration -> H.Html
+    registrationRow reg@R.Registration {..} = H.tr $ do
+      H.td $ H.toHtml email
+      H.td $ H.toHtml $ length participants
+      H.td $ H.toHtml $ fromMaybe "" comment
+      H.td $
+        H.toHtml $
+          formatTime defaultTimeLocale "%d.%m.%Y %H:%M Uhr" $
+            utcToBerlin registeredAt
+      H.td $ H.toHtml $ paymentCode
+      H.td $ H.toHtml $ show $ R.priceToPay reg
+      H.td $ if paidStatus == DT.Paid then "✓" else "✘"
+      H.td $ do
+        row $ do
+          colMd 6 $ do
+            H.form
+              ! A.action
                 (H.toValue $ "/registrations/" <> idToText id <> "/delete")
-            ! A.method "post"
-            $ do
+              ! A.method "post"
+              $ do
                 H.input
                   ! A.onclick
-                      (  H.toValue
-                      $  "return confirm('Willst du wirklich ' + '"
-                      <> email
-                      <> "' + ' ausladen?');"
-                      )
+                    ( H.toValue $
+                        "return confirm('Willst du wirklich ' + '"
+                          <> email
+                          <> "' + ' ausladen?');"
+                    )
                   ! A.class_ "btn btn-danger"
                   ! A.type_ "submit"
                   ! A.name "delete"
                   ! A.value "Löschen"
-        colMd 6 $ do
-          case paidStatus of
-            DT.Paid -> mempty
-            DT.NotPaid ->
-              H.form
-                ! A.action
+          colMd 6 $ do
+            case paidStatus of
+              DT.Paid -> mempty
+              DT.NotPaid ->
+                H.form
+                  ! A.action
                     (H.toValue $ "/registrations/" <> idToText id <> "/pay")
-                ! A.method "post"
-                $ do
+                  ! A.method "post"
+                  $ do
                     H.input
                       ! A.class_ "btn btn-primary"
                       ! A.type_ "submit"
                       ! A.value "Bezahlt"
-  idToText (DT.Id i) = T.pack $ show i
+    idToText (DT.Id i) = T.pack $ show i
 
 utcToBerlin :: UTCTime -> ZonedTime
 utcToBerlin = utcToZonedTime (hoursToTimeZone 2)
@@ -316,8 +326,8 @@ info :: T.Text -> H.Html
 info text = do
   H.div ! A.class_ "alert alert-primary" $ H.toHtml text
 
-noSleepingMessage
-  :: LimitReached -> H.Html
+noSleepingMessage ::
+  LimitReached -> H.Html
 noSleepingMessage NoLimitReached = mempty
 noSleepingMessage CampingLimitReached = mempty
 noSleepingMessage SleepingAtSideLimitReached =
@@ -371,9 +381,9 @@ jugglingRegisterForm view = do
     formErrorMessage "participants" view
     let participantViews = DV.listSubViews "participants" view
     H.div ! A.class_ "participants" $ do
-      mapM_ (\(v, i) -> participantForm v i)
-        $     participantViews
-        `zip` [1 ..]
+      mapM_ (\(v, i) -> participantForm v i) $
+        participantViews
+          `zip` [1 ..]
     let indicesList = T.intercalate "," $ T.pack <$> show <$> (\(x, _) -> x) <$> zip [0 :: Int ..] participantViews
     H.input ! A.type_ "hidden" ! A.name "Registration.participants.indices" ! A.value (H.toValue indicesList)
 
@@ -387,10 +397,11 @@ jugglingRegisterForm view = do
     H.br
 
     H.div ! A.class_ "form-group" $ do
-      label "Willst du uns noch etwas mitteilen?"
-            "Anything you want to tell us?"
-            "comment"
-            view
+      label
+        "Willst du uns noch etwas mitteilen?"
+        "Anything you want to tell us?"
+        "comment"
+        view
       DH.inputTextArea Nothing Nothing "comment" (modifiedView view)
         ! A.class_ "form-control"
       formErrorMessage "comment" view
@@ -400,44 +411,44 @@ jugglingRegisterForm view = do
       formErrorMessage "covidTermsAccepted" view
 
     H.div ! A.class_ "form-group" $ do
-      H.input ! A.class_ "btn btn-primary" ! A.type_ "submit" ! A.value
-        "Anmelden"
+      H.input ! A.class_ "btn btn-primary" ! A.type_ "submit"
+        ! A.value
+          "Anmelden"
 
     H.script $ do
       let code :: [String] =
-            [ "function replaceNumber(name, nextNumber) {"
-            , "  return name.replace(/\\.\\d+\\./, '.' + nextNumber + '.');"
-            , "}"
-            , "function replaceNumberInAttribute(e, attr, nextNumber) {"
-            , "  var value = e.getAttribute(attr);"
-            , "  e.setAttribute(attr, replaceNumber(value, nextNumber));"
-            , "};"
-            , "var link = document.getElementById('link');"
-            , "link.addEventListener('click', function(e){"
-            , "   e.preventDefault();"
-
-            , "   var nextId = parseInt(this.getAttribute('data'), 10);"
-            , "   var participants = document.querySelectorAll('.participant');"
-            , "   var lastForm = participants[participants.length - 1];"
-            , "   var newForm = lastForm.cloneNode(true);"
-            , "   newForm.querySelectorAll('input, select').forEach(function(e) { replaceNumberInAttribute(e, 'name', nextId); replaceNumberInAttribute(e, 'id', nextId); });"
-            , "   newForm.querySelectorAll('input[type=text]').forEach(function(e) { e.value = ''; });"
-            , "   newForm.querySelectorAll('label').forEach(function(e) { replaceNumberInAttribute(e, 'for', nextId) });"
-            , "   var headline = newForm.querySelector('h4');"
-            , "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer*in';"
-            , "   lastForm.parentNode.insertBefore(newForm, null);"
-            , "   this.setAttribute('data', nextId + 1);"
-            , "   var indicesElement = document.querySelector(\"input[name='Registration.participants.indices']\");"
-            , "   indicesElement.value = Array.apply(null, Array(nextId + 1)).map(function (x, i) { return i; }).join(',');"
-            , "})"
-            , ""
+            [ "function replaceNumber(name, nextNumber) {",
+              "  return name.replace(/\\.\\d+\\./, '.' + nextNumber + '.');",
+              "}",
+              "function replaceNumberInAttribute(e, attr, nextNumber) {",
+              "  var value = e.getAttribute(attr);",
+              "  e.setAttribute(attr, replaceNumber(value, nextNumber));",
+              "};",
+              "var link = document.getElementById('link');",
+              "link.addEventListener('click', function(e){",
+              "   e.preventDefault();",
+              "   var nextId = parseInt(this.getAttribute('data'), 10);",
+              "   var participants = document.querySelectorAll('.participant');",
+              "   var lastForm = participants[participants.length - 1];",
+              "   var newForm = lastForm.cloneNode(true);",
+              "   newForm.querySelectorAll('input, select').forEach(function(e) { replaceNumberInAttribute(e, 'name', nextId); replaceNumberInAttribute(e, 'id', nextId); });",
+              "   newForm.querySelectorAll('input[type=text]').forEach(function(e) { e.value = ''; });",
+              "   newForm.querySelectorAll('label').forEach(function(e) { replaceNumberInAttribute(e, 'for', nextId) });",
+              "   var headline = newForm.querySelector('h4');",
+              "   headline.innerText = '' + (nextId + 1) + '. Teilnehmer*in';",
+              "   lastForm.parentNode.insertBefore(newForm, null);",
+              "   this.setAttribute('data', nextId + 1);",
+              "   var indicesElement = document.querySelector(\"input[name='Registration.participants.indices']\");",
+              "   indicesElement.value = Array.apply(null, Array(nextId + 1)).map(function (x, i) { return i; }).join(',');",
+              "})",
+              ""
             ]
       H.toHtml $ unlines code
 
-registerPage
-  :: DV.View T.Text
-  -> LimitReached
-  -> H.Html
+registerPage ::
+  DV.View T.Text ->
+  LimitReached ->
+  H.Html
 registerPage view isOverLimit = layout $ do
   H.div ! A.class_ "row mb-4" $ do
     colMd 12 $ do
@@ -449,8 +460,7 @@ registerPage view isOverLimit = layout $ do
       noSleepingMessage isOverLimit
 
       if isOverLimit == OverallLimitReached
-        then
-          mempty
+        then mempty
         else do
           H.br
           jugglingRegisterForm view
@@ -491,23 +501,20 @@ dateForm labelText englishLabelText dateView = do
       colMd 12 $ do
         formErrorMessage "" dateView
 
-
 bootstrapBooleanCheckbox :: T.Text -> T.Text -> DV.View Html -> Html
 bootstrapBooleanCheckbox ref text view =
   let checked = DV.fieldInputBool ref view
       ref' :: T.Text
       ref' = DV.absoluteRef ref view
       cssId = H.toValue ref'
-  in
-    H.div ! A.class_ "form-check" $ do
-      H.input
-        !  A.id cssId
-        !  A.class_ "form-check-input"
-        !  A.type_ "checkbox"
-        !  A.name (H.toValue ref')
-        !? (checked, A.checked "checked")
-      H.label ! A.class_ "form-check-label" ! A.for cssId $ H.toHtml $ text
-
+   in H.div ! A.class_ "form-check" $ do
+        H.input
+          ! A.id cssId
+          ! A.class_ "form-check-input"
+          ! A.type_ "checkbox"
+          ! A.name (H.toValue ref')
+          !? (checked, A.checked "checked")
+        H.label ! A.class_ "form-check-label" ! A.for cssId $ H.toHtml $ text
 
 bootstrapCheckboxes :: T.Text -> DV.View Html -> Html
 bootstrapCheckboxes ref view =
@@ -518,14 +525,14 @@ bootstrapCheckboxes ref view =
         let cssId = H.toValue $ ref' <> i
         H.div ! A.class_ "form-check" $ do
           H.input
-            !  A.id cssId
-            !  A.class_ "form-check-input"
-            !  A.type_ "checkbox"
-            !  A.name (H.toValue ref')
-            !  A.value (H.toValue i)
+            ! A.id cssId
+            ! A.class_ "form-check-input"
+            ! A.type_ "checkbox"
+            ! A.name (H.toValue ref')
+            ! A.value (H.toValue i)
             !? (selected, A.checked "checked")
           H.label ! A.class_ "form-check-label" ! A.for cssId $ c
-  in  mapM_ checkbox options
+   in mapM_ checkbox options
 
 checkboxesWithOther :: T.Text -> T.Text -> DV.View T.Text -> Html
 checkboxesWithOther labelText englishLabelText view = do
@@ -548,37 +555,37 @@ mailLink text email =
 label :: T.Text -> T.Text -> T.Text -> DV.View a -> Html
 label text englishText name view =
   let ref = H.toValue $ DV.absoluteRef name view
-  in  H.label ! A.for ref $ do
+   in H.label ! A.for ref $ do
         H.toHtml text
         if T.null englishText
           then mempty
           else do
             " "
             H.span
-              !  A.class_ "text-secondary"
-              $  "("
-              <> H.toHtml englishText
-              <> ")"
+              ! A.class_ "text-secondary"
+              $ "("
+                <> H.toHtml englishText
+                <> ")"
 
 bootstrapRadios :: T.Text -> DV.View Html -> Html
 bootstrapRadios ref view =
   let options = DV.fieldInputChoice ref view
-      ref'    = DV.absoluteRef ref view
+      ref' = DV.absoluteRef ref view
       radio (i, c, selected) = do
         let cssId = H.toValue $ ref' <> i
         H.div ! A.class_ "form-check" $ do
           H.input
-            !  A.id cssId
-            !  A.class_ "form-check-input"
-            !  A.type_ "radio"
-            !  A.name (H.toValue ref')
-            !  A.value (H.toValue i)
+            ! A.id cssId
+            ! A.class_ "form-check-input"
+            ! A.type_ "radio"
+            ! A.name (H.toValue ref')
+            ! A.value (H.toValue i)
             !? (selected, A.checked "selected")
           H.label ! A.class_ "form-check-label" ! A.for cssId $ c
-  in  mapM_ radio options
+   in mapM_ radio options
 
-participationPrintPage
-  :: [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
+participationPrintPage ::
+  [(P.ExistingParticipant, R.ExistingRegistration)] -> H.Html
 participationPrintPage participants = layout $ do
   row $ do
     colMd 12 $ do
@@ -611,45 +618,43 @@ participationPrintPage participants = layout $ do
             H.th "Unterschrift"
         H.tbody $ do
           mapM_ participantRow (zip [(1 :: Int) ..] participants)
-          mapM_ emptyRow
-                [(length participants + 1) .. (length participants + 150)]
-
- where
-  rowWithMinHeight inner = H.tr ! A.style "line-height: 35px" $ inner
-  numberColumn n = H.td ! A.class_ "text-right" $ H.toHtml $ show n
-  emptyRow n = rowWithMinHeight $ do
-    numberColumn n
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-    H.td mempty
-  participantRow (n, (p, R.Registration {..})) = rowWithMinHeight $ do
-    numberColumn n
-    H.td $ H.toHtml $ P.participantName p
-    H.td
-      ! A.style "width: 80px"
-      $ H.toHtml
-      $ formatBirthday
-      $ P.participantBirthday p
-    H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
-    H.td
-      ! A.class_ "text-center"
-      ! A.style "width: 40px"
-      $ H.toHtml
-      $ sleepOverToGerman
-      $ P.participantAccommodation p
-    H.td $ H.toHtml $ paidToText paidStatus
-    H.td $ mempty
+          mapM_
+            emptyRow
+            [(length participants + 1) .. (length participants + 150)]
+  where
+    rowWithMinHeight inner = H.tr ! A.style "line-height: 35px" $ inner
+    numberColumn n = H.td ! A.class_ "text-right" $ H.toHtml $ show n
+    emptyRow n = rowWithMinHeight $ do
+      numberColumn n
+      H.td mempty
+      H.td mempty
+      H.td mempty
+      H.td mempty
+      H.td mempty
+      H.td mempty
+      H.td mempty
+    participantRow (n, (p, R.Registration {..})) = rowWithMinHeight $ do
+      numberColumn n
+      H.td $ H.toHtml $ P.participantName p
+      H.td
+        ! A.style "width: 80px"
+        $ H.toHtml $
+          formatBirthday $
+            P.participantBirthday p
+      H.td $ H.toHtml $ P.ticketLabel $ P.participantTicket p
+      H.td
+        ! A.class_ "text-center"
+        ! A.style "width: 40px"
+        $ H.toHtml $
+          sleepOverToGerman $
+            P.participantAccommodation p
+      H.td $ H.toHtml $ paidToText paidStatus
+      H.td $ mempty
 
 sleepOverToGerman :: P.Accommodation -> T.Text
-sleepOverToGerman P.Camping       = "Zelt"
+sleepOverToGerman P.Camping = "Zelt"
 sleepOverToGerman P.SelfOrganized = "—"
-sleepOverToGerman P.Gym           = "Halle"
-
-
+sleepOverToGerman P.Gym = "Halle"
 
 row :: Html -> Html
 row inner = H.div ! A.class_ "row" $ inner
@@ -666,5 +671,5 @@ colLg columns inner =
   H.div ! A.class_ (H.toValue $ "col-lg-" ++ show columns) $ inner
 
 paidToText :: DT.PaidStatus -> T.Text
-paidToText DT.Paid    = "Bezahlt"
+paidToText DT.Paid = "Bezahlt"
 paidToText DT.NotPaid = "Nicht bezahlt"

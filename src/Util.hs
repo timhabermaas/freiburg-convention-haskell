@@ -1,15 +1,16 @@
 module Util
-    ( gymSleepCount
-    , campingSleepCount -- TODO: Rename
-    , formatDay
-    , formatBirthday
-    , requiresParentSignature
-    ) where
+  ( gymSleepCount,
+    campingSleepCount, -- TODO: Rename
+    formatDay,
+    formatBirthday,
+    requiresParentSignature,
+  )
+where
 
-import Types
+import Data.Time.Calendar (Day, fromGregorian)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Domain.SharedTypes
-import Data.Time.Format (formatTime, defaultTimeLocale)
-import Data.Time.Calendar (fromGregorian, Day)
+import Types
 
 gymSleepCount :: [Sleepover] -> Int
 gymSleepCount = length . filter (\s -> s == GymSleeping)
@@ -23,8 +24,7 @@ formatBirthday (Birthday d) = formatDay d
 formatDay :: Day -> String
 formatDay d = formatTime defaultTimeLocale "%d.%m.%Y" d
 
-
 requiresParentSignature :: Day -> Bool
 requiresParentSignature birthday =
-    -- this is the second day because people having their 18th birthday on the first day are fine.
-    birthday >= fromGregorian 2000 10 13
+  -- this is the second day because people having their 18th birthday on the first day are fine.
+  birthday >= fromGregorian 2000 10 13
